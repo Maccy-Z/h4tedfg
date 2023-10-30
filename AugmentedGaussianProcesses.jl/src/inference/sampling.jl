@@ -7,22 +7,22 @@ function log_gp_prior(gp::SampledLatent, f::AbstractVector, X::AbstractVector)
     return logpdf(MvNormal(pr_mean(gp, X), pr_cov(gp)), f)
 end
 
-function logjoint(model::MCGP{T,L,<:SamplingInference}, x) where {T,L}
-    fs = unsqueeze(model, x)
-    return loglikelihood(model.likelihood, yview(model), fs) +
-           sum(log_gp_prior.(model.f, fs))
-end
+# function logjoint(model::MCGP{T,L,<:SamplingInference}, x) where {T,L}
+#     fs = unsqueeze(model, x)
+#     return loglikelihood(model.likelihood, yview(model), fs) +
+#            sum(log_gp_prior.(model.f, fs))
+# end
 
-function unsqueeze(model::MCGP, f)
-    n = model.nFeatures
-    return Tuple(f[((i - 1) * n + 1):(i * n)] for i in 1:(model.nLatent))
-end
+# function unsqueeze(model::MCGP, f)
+#     n = model.nFeatures
+#     return Tuple(f[((i - 1) * n + 1):(i * n)] for i in 1:(model.nLatent))
+# end
 
-function ∇logjoint(model::MCGP{T,L,<:SamplingInference}, x) where {T,L}
-    fs = unsqueeze(model, x)
-    return vcat(∇loglikehood(likelihood(model), yview(model), fs)...) +
-           vcat(∇logprior(model.f, fs)...)
-end
+# function ∇logjoint(model::MCGP{T,L,<:SamplingInference}, x) where {T,L}
+#     fs = unsqueeze(model, x)
+#     return vcat(∇loglikehood(likelihood(model), yview(model), fs)...) +
+#            vcat(∇logprior(model.f, fs)...)
+# end
 
 function Distributions.loglikelihood(
     l::AbstractLikelihood, y::AbstractVector, f::Tuple{<:AbstractVector{T}}

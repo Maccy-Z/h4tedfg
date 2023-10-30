@@ -26,8 +26,9 @@ LogisticSoftMaxLikelihood(x) = MultiClassLikelihood(LogisticSoftMaxLink(), x)
 
 struct LogisticSoftMaxLink <: AbstractLink end
 
+# HERE
 function (::LogisticSoftMaxLink)(f::AbstractVector{<:Real})
-    return normalize(logistic.(f), 1)
+    return normalize(logistic.(f), 1)       # logistic(x) = 1 / (1 + exp(-x))
 end
 
 function implemented(

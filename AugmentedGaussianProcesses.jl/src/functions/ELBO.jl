@@ -10,13 +10,11 @@
 
 ## ELBO Section ##
 function expec_loglikelihood(
-    y, model, state, i::Int
-)
-    @info "At expec_loglikelihood"
+    y, model, state, zero)
     tot = -length(y) * logtwo
     tot += -sum(sum(state.γ .+ eachcol(y))) * logtwo
 
-    total_sum = 0.0  # This is a floating-point number, assuming the operations below yield floats.
+    total_sum = zero # This is a floating-point number, assuming the operations below yield floats.
     # Iterate over each set of corresponding elements from the input collections.
     for (θ, γ, col_y, gp) in zip(state.θ, state.γ, eachcol(y), model.f)
         current_μ, current_Σ = gp.post.μ, diag(gp.post.Σ)
@@ -32,24 +30,7 @@ function expec_loglikelihood(
     return tot
 end
 
-# @traitfn function custom_mean_f(
-#     model::TGP
-# ) where {TGP <: AbstractGPModel; !IsMultiOutput{TGP}}
-#     @info "Custom mean func"
-#
-#     return [mf.post.μ for mf in model.f]
-# end
-#
-# @traitfn function custom_var_f(
-#     model::TGP
-# ) where {TGP <: AbstractGPModel; !IsMultiOutput{TGP}}
-#     #return var_f.(model.f, kernel_matrices)
-#     return [diag(gp.post.Σ) for gp in model.f]
-# end
-
-function ELBO(model::AbstractGPModel, X, y, pr_means, kernels, state)
-    @info "At ELBO function with 6 inputs"
-
+function ELBO(model::TGP, X, y, pr_means, kernels, state) where {T,L,TGP<:AbstractGPModel{T,L,<:AnalyticVI}}
     #setpr_means!(model, pr_means)
     for (gp, mu) in zip(model.f, pr_means)
         gp.prior.μ₀ = mu
@@ -62,43 +43,35 @@ function ELBO(model::AbstractGPModel, X, y, pr_means, kernels, state)
 
     kernel_matrices = compute_kernel_matrices(kernels, state, X, 0, true)
     model.inference.HyperParametersUpdated = false
-    # @assert false "ELBO FUnction"
 
     # ELBO function
-    tot = 0.#zero(T)
-    @info "Calling expec_loglikelihood"
-    println(model.inference.ρ)
+    tot = zero(T)
     tot +=
         model.inference.ρ* expec_loglikelihood(
             y,
             model,
             state.local_vars,
-            0
+            zero(T)
         )
     #c = GaussianKL(model, state)
-    c = 0.
-
-    X_data = (model.data.X, model.data.X, model.data.X)
-    iter_inputs = (model.f, X_data, kernel_matrices)
-    [println(length(in_obj)) for in_obj in iter_inputs]
+    X_data = (model.data.X for _ in 1:length(model.f))
+    c = zero(T)
     for (gp, X, k_mat) in zip(model.f, X_data, kernel_matrices)
         μ, μ₀, Σ, K = gp.post.μ, gp.prior.μ₀(X), gp.post.Σ, k_mat
 
         mapped_item = (logdet(K) - logdet(Σ) + tr(K \ Σ) + invquad(K, μ - μ₀) - length(μ)) / 2  # Apply the mapping function
-        c = c + mapped_item  # Combine with the current result using the reduction function
+        c += mapped_item
     end
     tot -= c
     tot -= ChainRulesCore.ignore_derivatives() do
         ρ(inference(model)) * AugmentedKL(likelihood(model), state.local_vars, y)
     end
-    tot -= extraKL(model, state)
-    println(" ")
-    @info "Total ELBO"
-    println(tot)
-    println(" ")
-    o = tot
+    #tot -= extraKL(model, state)
+#      @info "Total ELBO"
+#      println(tot)
+#     println(" ")
     #o = objective(model, state, y)
-    return o
+    return tot
 end
 
 # function ELBO(model::AbstractGPModel, X, y, pr_means, kernels, Zs, state)

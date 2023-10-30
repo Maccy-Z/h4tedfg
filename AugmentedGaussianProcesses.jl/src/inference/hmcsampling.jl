@@ -65,10 +65,10 @@ function tuple_inference(
     )
 end
 
-function grad_log_joint_pdf(model::MCGP{T,L,HMCSampling{T}}, x) where {T,L}
-    return grad_log_likelihood(likelihood(model), yview(model), x) +
-           sum(grad_log_gp_prior.(model.f, x))
-end
+# function grad_log_joint_pdf(model::MCGP{T,L,HMCSampling{T}}, x) where {T,L}
+#     return grad_log_likelihood(likelihood(model), yview(model), x) +
+#            sum(grad_log_gp_prior.(model.f, x))
+# end
 
 function init_sampler!(
     inference::HMCSampling{T},
@@ -87,20 +87,20 @@ function init_sampler!(
     return inference
 end
 
-function sample_parameters(
-    model::MCGP{T,L,<:HMCSampling{T}}, nSamples::Int, callback, cat_samples::Bool
-) where {T,L}
-    f_init = vcat(means(model)...)
-    logpdf(x) = log_joint_model(model, x)
-    gradlogpdf(x) = (log_joint_model(model, x), grad_log_joint_model(model, x))
-    metric = DiagEuclideanMetric(length(f_init))
-    h = Hamiltonian(metric, logpdf, gradlogpdf)
-    int = Leapfrog(find_good_eps(h, f_init))
-    prop = NUTS{MultinomialTS,GeneralisedNoUTurn}(int)
-    adaptor = StanHMCAdaptor(
-        n_adapts, Preconditioner(metric), NesterovDualAveraging(0.8, int.ϵ)
-    )
-    return samples, stats = sample(
-        h, prop, f_init, nSamples, adaptor, n_adapts; progress=true
-    )
-end
+# function sample_parameters(
+#     model::MCGP{T,L,<:HMCSampling{T}}, nSamples::Int, callback, cat_samples::Bool
+# ) where {T,L}
+#     f_init = vcat(means(model)...)
+#     logpdf(x) = log_joint_model(model, x)
+#     gradlogpdf(x) = (log_joint_model(model, x), grad_log_joint_model(model, x))
+#     metric = DiagEuclideanMetric(length(f_init))
+#     h = Hamiltonian(metric, logpdf, gradlogpdf)
+#     int = Leapfrog(find_good_eps(h, f_init))
+#     prop = NUTS{MultinomialTS,GeneralisedNoUTurn}(int)
+#     adaptor = StanHMCAdaptor(
+#         n_adapts, Preconditioner(metric), NesterovDualAveraging(0.8, int.ϵ)
+#     )
+#     return samples, stats = sample(
+#         h, prop, f_init, nSamples, adaptor, n_adapts; progress=true
+#     )
+# end

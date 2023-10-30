@@ -47,16 +47,9 @@ function train!(
     prev_elbo = -Inf
     while true # loop until one condition is matched
         try
-            if is_stochastic(model)
-                minibatch = StatsBase.sample(
-                    1:n_sample(data), batchsize(model); replace=false
-                )
-                x = view_x(data, minibatch)
-                y = view_y(likelihood(model), data, minibatch)
-            else
-                x = input(data)
-                y = view_y(likelihood(model), data, 1:n_sample(data))
-            end
+            x = input(data)
+            y = view_y(likelihood(model), data, 1:n_sample(data))
+
             state = update_parameters!(model, state, x, y) #Update all the variational parameters
             set_trained!(model, true)
             if !isnothing(callback)
@@ -66,8 +59,7 @@ function train!(
                 (n_iter(model) >= 3) &&
                 (local_iter != iterations)
                 state = update_hyperparameters!(model, state, x, y) #Update the hyperparameters-
-                @info "Hyperparameters updated"
-                println("Hyperparameters updated")
+                # @info "Hyperparameters updated"
             end
             # Print out informations about the convergence
             if verbose(model) > 2 || (verbose(model) > 1 && local_iter % 10 == 0)
@@ -172,12 +164,13 @@ end
 #     return merge(state, (; kernel_matrices))
 # end
 
+
 @traitfn function compute_kernel_matrices(
     m::TGP, state, x, update::Bool=false
 ) where {T,TGP<:AbstractGPModel{T};IsFull{TGP}}
     if isHPupdated(inference(m)) || update
         kernel_matrices = map(m.f) do gp
-            (; K=cholesky(kernelmatrix(kernel(gp), x) + 1e-4 * I))
+            (; K=compute_K(gp, x, T(jitt)))
         end
         setHPupdated!(inference(m), false)
         return merge(state, (; kernel_matrices))
@@ -197,16 +190,7 @@ end
 function compute_kernel_matrices(
     kernels, state, x, i::Int, update::Bool=false
 )
-    println(" ")
-    @info "At compute_kernel_matrices custom"
     if update
-
-        num_elements = length(kernels)
-#
-#         a = kernel_fn(kernels[1], x)
-#         b = kernel_fn(kernels[2], x)
-#         c = kernel_fn(kernels[3], x)
-#         kernel_matrices = [a, b, c]
         kernel_matrices = [kernel_fn(gp, x) for gp in kernels]
 
         # setHPupdated!(inference(m), false)

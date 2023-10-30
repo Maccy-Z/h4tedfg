@@ -14,20 +14,20 @@
 
 
 ## KL Divergence between the GP Prior and the variational distribution
-function GaussianKL(model::AbstractGPModel, state)
-    @info "GKL 1"
-    #ret_val = custom_mapreduce(GaussianKL, +, model.f, Zviews(model), state.kernel_matrices)
-    # ret_val = custom_mapreduce(nothing, nothing, model.f, (model.data.X,model.data.X,model.data.X), state.kernel_matrices)
-
-    ret_val = 0.
-    for (gp, X, k_mat) in zip(model.f, (model.data.X,model.data.X,model.data.X), state.kernel_matrices)  # Skip the first element because it's already in the result
-        μ, μ₀, Σ, K = gp.post.μ, gp.prior.μ₀(X), gp.post.Σ, k_mat.K
-
-        mapped_item = (logdet(K) - logdet(Σ) + tr(K \ Σ) + invquad(K, μ - μ₀) - length(μ)) / 2  # Apply the mapping function
-        ret_val = ret_val + mapped_item  # Combine with the current result using the reduction function
-    end
-    return ret_val
-end
+# function GaussianKL(model::AbstractGPModel, state)
+#     @info "GKL 1"
+#     #ret_val = custom_mapreduce(GaussianKL, +, model.f, Zviews(model), state.kernel_matrices)
+#     # ret_val = custom_mapreduce(nothing, nothing, model.f, (model.data.X,model.data.X,model.data.X), state.kernel_matrices)
+#
+#     ret_val = 0.
+#     for (gp, X, k_mat) in zip(model.f, (model.data.X,model.data.X,model.data.X), state.kernel_matrices)  # Skip the first element because it's already in the result
+#         μ, μ₀, Σ, K = gp.post.μ, gp.prior.μ₀(X), gp.post.Σ, k_mat.K
+#
+#         mapped_item = (logdet(K) - logdet(Σ) + tr(K \ Σ) + invquad(K, μ - μ₀) - length(μ)) / 2  # Apply the mapping function
+#         ret_val = ret_val + mapped_item  # Combine with the current result using the reduction function
+#     end
+#     return ret_val
+# end
 
 # function GaussianKL(gp::AbstractLatent, X::AbstractVector, k_mat)
 #     @info "GKL 2"
@@ -59,31 +59,34 @@ end
 #     return (logdet(K) - logdet(Σ) + tr(K \ Σ) + dot(μ - μ₀, K \ (μ - μ₀)) - length(μ)) / 2
 # end
 
-extraKL(::AbstractGPModel{T}, ::Any) where {T} = zero(T)
-
-"""
-    extraKL(model::OnlineSVGP)
-
-Extra KL term containing the divergence with the GP at time t and t+1
-"""
-function extraKL(model::OnlineSVGP{T}, state) where {T}
-    return mapreduce(
-        +, model.f, state.opt_state, state.kernel_matrices
-    ) do gp, opt_state, kernel_mat
-        prev_gp = opt_state.previous_gp
-        κₐμ = kernel_mat.κₐ * mean(gp)
-        KLₐ = prev_gp.prev𝓛ₐ
-        KLₐ +=
-            -sum(
-                trace_ABt.(
-                    Ref(prev_gp.invDₐ),
-                    [kernel_mat.K̃ₐ, kernel_mat.κₐ * cov(gp) * transpose(kernel_mat.κₐ)],
-                ),
-            ) / 2
-        KLₐ += dot(prev_gp.prevη₁, κₐμ) - dot(κₐμ, prev_gp.invDₐ * κₐμ) / 2
-        return KLₐ
-    end
+#extraKL(::AbstractGPModel{T}, ::Any) where {T} = zero(T)
+function extraKL(::AbstractGPModel{T}, ::Any) where {T}
+    @info "Using zero kl"
+    return 0.#zero(T)
 end
+# """
+#     extraKL(model::OnlineSVGP)
+#
+# Extra KL term containing the divergence with the GP at time t and t+1
+# """
+# function extraKL(model::OnlineSVGP{T}, state) where {T}
+#     return mapreduce(
+#         +, model.f, state.opt_state, state.kernel_matrices
+#     ) do gp, opt_state, kernel_mat
+#         prev_gp = opt_state.previous_gp
+#         κₐμ = kernel_mat.κₐ * mean(gp)
+#         KLₐ = prev_gp.prev𝓛ₐ
+#         KLₐ +=
+#             -sum(
+#                 trace_ABt.(
+#                     Ref(prev_gp.invDₐ),
+#                     [kernel_mat.K̃ₐ, kernel_mat.κₐ * cov(gp) * transpose(kernel_mat.κₐ)],
+#                 ),
+#             ) / 2
+#         KLₐ += dot(prev_gp.prevη₁, κₐμ) - dot(κₐμ, prev_gp.invDₐ * κₐμ) / 2
+#         return KLₐ
+#     end
+# end
 #
 # InverseGammaKL(α, β, αₚ, βₚ) = GammaKL(α, β, αₚ, βₚ)
 # """

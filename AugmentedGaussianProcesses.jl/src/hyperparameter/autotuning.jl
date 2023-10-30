@@ -16,31 +16,18 @@ include("forwarddiff_rules.jl")
         hp_state = state.hyperopt_state
         μ₀ = pr_means(m) # Get prior means
         #ks = kernels(m) # Get kernels
-        #ks = kernel.(m.f)
         ks = [gp.prior.kernel for gp in m.f]
-#         println(" ")
-#         println(ks[1].transform)
-#         println(" ")
-#         println("Field names: ")
-#         # println(fieldnames(typeof(ks[1])))
-#         for field in fieldnames(typeof(ks[1].transform))
-#             field_value = getfield(ks[1].transform, field)
-#             println("Field Names: $field: $field_value")
-#         end
-#         @assert false
+
         if ADBACKEND[] == :Zygote
-            Δk = Zygote.gradient(ks) do in_ks # Compute gradients for the whole model
-                ELBO(m, x, y, μ₀, in_ks, state)
+            Δμ₀, Δk = Zygote.gradient(μ₀, ks) do μ₀, ks # Compute gradients for the whole model
+                ELBO(m, x, y, μ₀, ks, state)
             end
-#             Δμ₀, Δk = Zygote.gradient(0, 1) do μ₀, ks # Compute gradients for the whole model
-#                 ELBO(m, x, y, μ₀, ks, state)
-#                 μ₀ + ks
-#             end
-            @error "WOW completed"
-            println(" ")
-            println("  d_k = ", Δk)
-#             println(" ")
-            @assert false "NO ERRORS!!!"
+#             @info "Grad step completed"
+#             #println(" ")
+#             println("Δk = ", Δk)
+#             println("Δμ₀ = ", Δμ₀)
+            #println(" ")
+
             # Optimize prior mean
             if !isnothing(Δμ₀)
                 hp_state = update!.(μ₀, Δμ₀, hp_state)
@@ -58,17 +45,7 @@ include("forwarddiff_rules.jl")
                 end
             end
         elseif ADBACKEND[] == :ForwardDiff
-            println(" ")
-            println(" ")
-            println(" ")
-                        println(" ")
-            println(" ")
-            println(" ")
-                        println(" ")
-            println(" ")
-            println(" ")
-            println("ForwardDiff")
-
+            @assert false "Should never be here"
             θ, re = destructure((μ₀, ks))
             Δ = ForwardDiff.gradient(θ) do θ
 

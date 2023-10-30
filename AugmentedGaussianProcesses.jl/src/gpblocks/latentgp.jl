@@ -228,9 +228,6 @@ Zopt(gp::OnlineVarLatent) = gp.Zopt
 
 function compute_K(gp::AbstractLatent, X::AbstractVector, jitt::Real)
     chol = cholesky(kernelmatrix(kernel(gp), X) + jitt * I)
-    println(chol.U)
-    @info "Cholesky Complete"
-    println(" ")
     return chol
 end
 

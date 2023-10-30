@@ -83,32 +83,32 @@ end
     state = global_update!(m, state)
     return merge(state, (; local_vars))
 end
-# Multioutput version
-@traitfn function variational_updates(
-    m::TGP, state, y
-) where {T,L,TGP<:AbstractGPModel{T,L,<:AnalyticVI};IsMultiOutput{TGP}}
-    local_vars =
-        local_updates!.(
-            state.local_vars,
-            likelihood(m),
-            y,
-            mean_f(m, state.kernel_matrices),
-            var_f(m, state.kernel_matrices),
-        ) # Compute the local updates given the expectations of f
-    state = merge(state, (; local_vars))
-    natural_gradient!.(
-        m.f,
-        ∇E_μ(m, y, state),
-        ∇E_Σ(m, y, state),
-        ρ(inference(m)),
-        opt(inference(m)),
-        Zviews(m),
-        state.kernel_matrices,
-        state.opt_state,
-    ) # Compute the natural gradients of u given the weighted sum of the gradient of f
-    state = global_update!(m, state) # Update η₁ and η₂
-    return state
-end
+# # Multioutput version
+# @traitfn function variational_updates(
+#     m::TGP, state, y
+# ) where {T,L,TGP<:AbstractGPModel{T,L,<:AnalyticVI};IsMultiOutput{TGP}}
+#     local_vars =
+#         local_updates!.(
+#             state.local_vars,
+#             likelihood(m),
+#             y,
+#             mean_f(m, state.kernel_matrices),
+#             var_f(m, state.kernel_matrices),
+#         ) # Compute the local updates given the expectations of f
+#     state = merge(state, (; local_vars))
+#     natural_gradient!.(
+#         m.f,
+#         ∇E_μ(m, y, state),
+#         ∇E_Σ(m, y, state),
+#         ρ(inference(m)),
+#         opt(inference(m)),
+#         Zviews(m),
+#         state.kernel_matrices,
+#         state.opt_state,
+#     ) # Compute the natural gradients of u given the weighted sum of the gradient of f
+#     state = global_update!(m, state) # Update η₁ and η₂
+#     return state
+# end
 
 # Wrappers for tuple of 1 element,
 # when multiple f are needed, these methods can be simply overloaded 
@@ -139,22 +139,22 @@ function natural_gradient!(
     return gp
 end
 
-# Computation of the natural gradient for the natural parameters
-function natural_gradient!(
-    gp::SparseVarLatent{T},
-    ∇E_μ::AbstractVector,
-    ∇E_Σ::AbstractVector,
-    ρ::Real,
-    ::AVIOptimizer,
-    Z::AbstractVector,
-    kernel_matrices,
-    opt_state,
-) where {T}
-    K, κ = kernel_matrices.K, kernel_matrices.κ
-    opt_state.∇η₁ .= ∇η₁(∇E_μ, ρ, κ, K, pr_mean(gp, Z), nat1(gp))
-    opt_state.∇η₂ .= ∇η₂(∇E_Σ, ρ, κ, K, nat2(gp))
-    return gp
-end
+# # Computation of the natural gradient for the natural parameters
+# function natural_gradient!(
+#     gp::SparseVarLatent{T},
+#     ∇E_μ::AbstractVector,
+#     ∇E_Σ::AbstractVector,
+#     ρ::Real,
+#     ::AVIOptimizer,
+#     Z::AbstractVector,
+#     kernel_matrices,
+#     opt_state,
+# ) where {T}
+#     K, κ = kernel_matrices.K, kernel_matrices.κ
+#     opt_state.∇η₁ .= ∇η₁(∇E_μ, ρ, κ, K, pr_mean(gp, Z), nat1(gp))
+#     opt_state.∇η₂ .= ∇η₂(∇E_Σ, ρ, κ, K, nat2(gp))
+#     return gp
+# end
 
 # Gradient of on the first natural parameter η₁ = Σ⁻¹μ
 function ∇η₁(
@@ -179,28 +179,28 @@ function ∇η₂(
     return -(ρκdiagθκ(ρ, κ, θ) + inv(K) / 2) - η₂
 end
 
-# Natural gradient for the ONLINE model (OSVGP) #
-function natural_gradient!(
-    gp::OnlineVarLatent{T},
-    ∇E_μ::AbstractVector{T},
-    ∇E_Σ::AbstractVector{T},
-    ::Real,
-    ::AVIOptimizer,
-    Z::AbstractVector,
-    kernel_matrices,
-    opt_state,
-) where {T}
-    K = kernel_matrices.K
-    κ = kernel_matrices.κ
-    κₐ = kernel_matrices.κₐ
-    previous_gp = opt_state.previous_gp
-    prevη₁ = previous_gp.prevη₁
-    invDₐ = previous_gp.invDₐ
-    gp.post.η₁ = K \ pr_mean(gp, Z) + transpose(κ) * ∇E_μ + transpose(κₐ) * prevη₁
-    gp.post.η₂ =
-        -Symmetric(ρκdiagθκ(1.0, κ, ∇E_Σ) + transpose(κₐ) * invDₐ * κₐ / 2 + inv(K) / 2)
-    return gp
-end
+# # Natural gradient for the ONLINE model (OSVGP) #
+# function natural_gradient!(
+#     gp::OnlineVarLatent{T},
+#     ∇E_μ::AbstractVector{T},
+#     ∇E_Σ::AbstractVector{T},
+#     ::Real,
+#     ::AVIOptimizer,
+#     Z::AbstractVector,
+#     kernel_matrices,
+#     opt_state,
+# ) where {T}
+#     K = kernel_matrices.K
+#     κ = kernel_matrices.κ
+#     κₐ = kernel_matrices.κₐ
+#     previous_gp = opt_state.previous_gp
+#     prevη₁ = previous_gp.prevη₁
+#     invDₐ = previous_gp.invDₐ
+#     gp.post.η₁ = K \ pr_mean(gp, Z) + transpose(κ) * ∇E_μ + transpose(κₐ) * prevη₁
+#     gp.post.η₂ =
+#         -Symmetric(ρκdiagθκ(1.0, κ, ∇E_Σ) + transpose(κₐ) * invDₐ * κₐ / 2 + inv(K) / 2)
+#     return gp
+# end
 
 # Once the natural parameters have been updated we need to convert back to μ and Σ
 @traitfn function global_update!(
@@ -212,10 +212,10 @@ end
 
 global_update!(gp::VarLatent, ::AVIOptimizer, ::AnalyticVI) = global_update!(gp)
 
-function global_update!(model::OnlineSVGP, state)
-    global_update!.(model.f)
-    return state
-end
+# function global_update!(model::OnlineSVGP, state)
+#     global_update!.(model.f)
+#     return state
+# end
 
 #Update of the natural parameters and conversion from natural to standard distribution parameters
 @traitfn function global_update!(

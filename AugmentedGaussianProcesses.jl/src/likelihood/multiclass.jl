@@ -110,6 +110,7 @@ function compute_proba(
     σ²::Tuple{Vararg{<:AbstractVector{T}}},
     nSamples::Integer=200,
 ) where {T<:Real}
+    @info "At compute_proba multiclass"
     K = n_class(l) # Number of classes
     n = length(μ[1]) # Number of test points
     μ = hcat(μ...) # Concatenate means together
@@ -117,10 +118,19 @@ function compute_proba(
     σ² = hcat(σ²...) # Concatenate variances together
     σ² = [σ²[i, :] for i in 1:n] # Create one vector per sample
     pred = zeros(T, n, K) # Empty container for the predictions
+
+    println(l)
+    println("n ", n)
+    println("K ", K)
+    println("nSamples ", nSamples)
+    println("μ ", μ[1])
+    println(" ")
     for i in 1:n
         # p = MvNormal(μ[i],sqrt.(abs.(σ²[i])))
         # p = MvNormal(μ[i],sqrt.(max.(eps(T),σ²[i]))) #WARNING DO NOT USE VARIANCE
+        #l(0.)
         pred[i, :] .= l(μ[i])
+        # println(μ[i])
         # for _ in 1:nSamples
         # end
     end

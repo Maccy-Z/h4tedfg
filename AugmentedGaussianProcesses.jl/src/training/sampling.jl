@@ -8,25 +8,25 @@ struct GPSampler{TS} <: AbstractMCMC.AbstractSampler
     sampler::TS
 end
 
-function StatsBase.sample(model::MCGP, N::Int; kwargs...)
-    return sample(Random.GLOBAL_RNG, model, N; kwargs...)
-end
-function StatsBase.sample(rng::Random.AbstractRNG, model::MCGP, N::Int; kwargs...)
-    sampler = inference(model)
-    thinning = get(kwargs, :thinning, sampler.thinning)
-    discard_initial = get(kwargs, :discard_initial, sampler.nBurnin)
-    progressname = get(kwargs, :progressname, "Sampling with $sampler")
-    return sample(
-        rng,
-        GPModel(model, input(model.data), output(model.data)),
-        GPSampler(sampler),
-        N;
-        thinning,
-        discard_initial,
-        progressname,
-        kwargs...,
-    )
-end
+# function StatsBase.sample(model::MCGP, N::Int; kwargs...)
+#     return sample(Random.GLOBAL_RNG, model, N; kwargs...)
+# end
+# function StatsBase.sample(rng::Random.AbstractRNG, model::MCGP, N::Int; kwargs...)
+#     sampler = inference(model)
+#     thinning = get(kwargs, :thinning, sampler.thinning)
+#     discard_initial = get(kwargs, :discard_initial, sampler.nBurnin)
+#     progressname = get(kwargs, :progressname, "Sampling with $sampler")
+#     return sample(
+#         rng,
+#         GPModel(model, input(model.data), output(model.data)),
+#         GPSampler(sampler),
+#         N;
+#         thinning,
+#         discard_initial,
+#         progressname,
+#         kwargs...,
+#     )
+# end
 function AbstractMCMC.step(
     rng::AbstractRNG, model::GPModel, sampler::GPSampler{<:GibbsSampling}; kwargs...
 )
