@@ -104,13 +104,33 @@ function create_one_hot(l::MultiClassLikelihood, y)
     return Y
 end
 
+function sample_multivariate_normals(means, covariances, n_samples::Int)
+    if length(means) != length(covariances)
+        throw(ArgumentError("Number of means does not match number of covariances"))
+    end
+
+    all_samples = []
+
+    # Iterate over each mean-covariance pair
+    for i in 1:length(means)
+        #samples = sample_multivariate_normal(means[i], covariances[i], n_samples)
+        dist = MvNormal(means[i], covariances[i])
+        samples = rand(dist, n_samples)
+        push!(all_samples, samples)
+    end
+
+    return all_samples
+end
+
 function compute_proba(
     l::MultiClassLikelihood,
     μ::Tuple{Vararg{<:AbstractVector{T}}},
-    σ²::Tuple{Vararg{<:AbstractVector{T}}},
+    σ²::Tuple{Vararg{<:AbstractArray{T}}},
     nSamples::Integer=200,
 ) where {T<:Real}
-    @info "At compute_proba multiclass"
+    μ_old = μ
+    σ²_old = σ²
+
     K = n_class(l) # Number of classes
     n = length(μ[1]) # Number of test points
     μ = hcat(μ...) # Concatenate means together
@@ -119,14 +139,7 @@ function compute_proba(
     σ² = [σ²[i, :] for i in 1:n] # Create one vector per sample
     pred = zeros(T, n, K) # Empty container for the predictions
 
-    println(l)
-    println("n ", n)
-    println("K ", K)
-    println("nSamples ", nSamples)
-    println("μ ", μ[1])
-    println(" ")
     for i in 1:n
-        # p = MvNormal(μ[i],sqrt.(abs.(σ²[i])))
         # p = MvNormal(μ[i],sqrt.(max.(eps(T),σ²[i]))) #WARNING DO NOT USE VARIANCE
         #l(0.)
         pred[i, :] .= l(μ[i])
@@ -135,6 +148,37 @@ function compute_proba(
         # end
     end
     return NamedTuple{Tuple(Symbol.(l.class_mapping))}(eachcol(pred))
+end
+
+function compute_proba_upgrade(
+    l::MultiClassLikelihood,
+    μ::Tuple{Vararg{<:AbstractVector{T}}},
+    σ²::Tuple{Vararg{<:AbstractArray{T}}},
+    nSamples::Integer=200,
+) where {T<:Real}
+    μ_old = μ
+    σ²_old = σ²
+
+    K = n_class(l) # Number of classes
+    n = length(μ[1]) # Number of test points
+    μ = hcat(μ...) # Concatenate means together
+    μ = [μ[i, :] for i in 1:n] # Create one vector per sample
+    σ² = hcat(σ²...) # Concatenate variances together
+    σ² = [σ²[i, :] for i in 1:n] # Create one vector per sample
+    pred = zeros(T, n, K) # Empty container for the predictions
+
+    gaussians = sample_multivariate_normals(μ_old, σ²_old, nSamples) # Shape (K, nSamples, n)
+    gaussians = cat(gaussians..., dims=3)     # Shape (n, nSamples, K)
+    gaussians = reshape(gaussians, :, K)      # Shape (n * nSamples, K)
+
+    probs = mapslices(l, gaussians, dims=2)  # Shape (n, nSamples, K)
+    probs = reshape(probs, n, nSamples, K)
+    means = mean(probs, dims=2)         # Shape (n, 1, K)
+    means = dropdims(means, dims=2)   # Shape (n, K)
+
+    stds = std(probs, dims=2)         # Shape (n, 1, K)
+    stds = dropdims(stds, dims=2)   # Shape (n, K)
+    return (means, stds)
 end
 
 function expec_loglike(

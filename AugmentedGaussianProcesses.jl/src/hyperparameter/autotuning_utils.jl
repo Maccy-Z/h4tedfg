@@ -61,8 +61,15 @@ function update_kernel!(opt, k::Union{Kernel,Transform}, g::NamedTuple, state::N
 end
 
 function update_kernel!(opt, x::AbstractArray, g::AbstractArray, state)
-    state, Δ = Optimisers.apply(opt, state, x, x .* g)
-    @. x = exp(log(x) + Δ) # Always assume that parameters need to be positive
+    # Edit to stabalise training by not exponenting.
+    g = clamp.(g, -100, 100)
+    state, Δ = Optimisers.apply(opt, state, x, g)
+
+    @. x = abs(x + Δ)
+
+    #state, Δ = Optimisers.apply(opt, state, x, x .* g)
+    #@. x = exp(log(x) + Δ) # Always assume that parameters need to be positive
+
     return state
 end
 

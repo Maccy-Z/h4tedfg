@@ -11,12 +11,13 @@ end
 
 Optimisers.init(::RobbinsMonro, ::Any) = 1
 
-function Optimisers.apply(o::RobbinsMonro, st, x, Δ)
-    κ = o.κ
-    τ = o.τ
-    n = st
-    return (n + 1), Δ * 1 / (τ + n)^κ
-end
+# function Optimisers.apply(o::RobbinsMonro, st, x, Δ)
+#     println("At optimisers.jl")
+#     κ = o.κ
+#     τ = o.τ
+#     n = st
+#     return (n + 1), Δ * 1 / (τ + n)^κ
+# end
 
 """
     ALRSVI(n_mc=10, \rho)

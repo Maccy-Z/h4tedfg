@@ -46,8 +46,7 @@ function ELBO(model::TGP, X, y, pr_means, kernels, state) where {T,L,TGP<:Abstra
 
     # ELBO function
     tot = zero(T)
-    tot +=
-        model.inference.ρ* expec_loglikelihood(
+    tot += model.inference.ρ* expec_loglikelihood(
             y,
             model,
             state.local_vars,
@@ -67,10 +66,7 @@ function ELBO(model::TGP, X, y, pr_means, kernels, state) where {T,L,TGP<:Abstra
         ρ(inference(model)) * AugmentedKL(likelihood(model), state.local_vars, y)
     end
     #tot -= extraKL(model, state)
-#      @info "Total ELBO"
-#      println(tot)
-#     println(" ")
-    #o = objective(model, state, y)
+
     return tot
 end
 

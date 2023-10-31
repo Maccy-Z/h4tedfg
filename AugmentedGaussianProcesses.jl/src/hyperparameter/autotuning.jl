@@ -18,42 +18,49 @@ include("forwarddiff_rules.jl")
         #ks = kernels(m) # Get kernels
         ks = [gp.prior.kernel for gp in m.f]
 
-        if ADBACKEND[] == :Zygote
-            Δμ₀, Δk = Zygote.gradient(μ₀, ks) do μ₀, ks # Compute gradients for the whole model
-                ELBO(m, x, y, μ₀, ks, state)
-            end
-#             @info "Grad step completed"
-#             #println(" ")
-#             println("Δk = ", Δk)
-#             println("Δμ₀ = ", Δμ₀)
-            #println(" ")
+        # Compute gradients W.R.T kernel parameters.
+        Δμ₀, Δk = Zygote.gradient(μ₀, ks) do μ₀, ks # Compute gradients for the whole model
+            ELBO(m, x, y, μ₀, ks, state)
+        end
 
-            # Optimize prior mean
-            if !isnothing(Δμ₀)
-                hp_state = update!.(μ₀, Δμ₀, hp_state)
-            end
-            if isnothing(Δk)
-                @warn "Kernel gradients are equal to zero" maxlog = 1
-            else
-                hp_state = map(m.f, Δk, hp_state) do gp, Δ, hp_st
-                    if isnothing(opt(gp))
-                        return hp_st
-                    else
-                        state_k = update_kernel!(opt(gp), kernel(gp), Δ, hp_st.state_k)
-                        return merge(hp_st, (; state_k))
-                    end
+        if !isnothing(Δμ₀)
+            hp_state = update!.(μ₀, Δμ₀, hp_state)
+        end
+
+        if isnothing(Δk)
+            @warn "Kernel gradients are equal to zero" maxlog = 1
+        else
+            hp_state = map(m.f, Δk, hp_state) do gp, Δ, hp_st
+                if isnothing(opt(gp))
+                    return hp_st
+                else
+                    state_k = update_kernel!(opt(gp), kernel(gp), Δ, hp_st.state_k)
+                    return merge(hp_st, (; state_k))
                 end
             end
-        elseif ADBACKEND[] == :ForwardDiff
-            @assert false "Should never be here"
-            θ, re = destructure((μ₀, ks))
-            Δ = ForwardDiff.gradient(θ) do θ
+        end
 
-                a = re(θ)
-                println(a)
-                ELBO(m, x, y, re(θ)..., state)
+        # Limit kernel parameters
+        for gp in m.f
+            kernel = gp.prior.kernel
+            # Lengthscale
+            lengthscale = kernel.transform.s[1]
+            length_upper = 5.
+            if lengthscale >= length_upper
+                @info "Lengthscale $lengthscale is too large, setting to upper bound"
+                kernel.transform.s[1] = length_upper
+            end
+            # Sigma
+            σ² = kernel.kernel.σ²[1]
+            σ_upper = 100000
+            if σ² >= σ_upper
+                @info "Sigma $σ² is too large, setting to upper bound"
+                kernel.kernel.σ²[1] = σ_upper
             end
         end
+
+        #println(ks[1].kernel.σ²[1])
+
         state = merge(state, (; hyperopt_state=hp_state))
     end
     return state

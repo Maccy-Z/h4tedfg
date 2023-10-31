@@ -21,9 +21,10 @@ struct SOptimizer{O} <: AOptimizer
 end
 
 Optimisers.state(opt::InferenceOptimizer, x) = Optimisers.state(opt.optimiser, x)
-function Optimisers.apply(opt::InferenceOptimizer, st, x, dx)
-    return Optimisers.apply(opt.optimiser, st, x, dx)
-end
+# function Optimisers.apply(opt::InferenceOptimizer, st, x, dx)
+#     println("At vi_optimizers")
+#     return Optimisers.apply(opt.optimiser, st, x, dx)
+# end
 function Optimisers.update(opt::InferenceOptimizer, st, x, dx)
     return Optimisers.update(opt.optimiser, st, x, dx)
 end

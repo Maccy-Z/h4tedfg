@@ -66,7 +66,7 @@ const pred_nodes, pred_weights = (x -> (x[1] .* sqrt2, x[2] ./ sqrtπ))(gaussher
 # end
 
 @traitfn function _predict_f(
-    m::TGP, X_test::AbstractVector, state=nothing; cov::Bool=true, diag::Bool=true
+    m::TGP, X_test::AbstractArray, state=nothing; cov::Bool=true, diag::Bool=true
 ) where {T,TGP<:AbstractGPModel{T};!IsMultiOutput{TGP}}
 
     Ks = if isnothing(state)
@@ -89,6 +89,7 @@ const pred_nodes, pred_weights = (x -> (x[1] .* sqrt2, x[2] ./ sqrtπ))(gaussher
     else
         k_starstar = kernelmatrix.(kernels(m), Ref(X_test)) .+ T(jitt) * [I]
         Σf = Symmetric.(k_starstar .- k_star .* A .* transpose.(k_star))
+        Σf = Tuple(Σf)
         return (μf, Σf)
     end
 end
@@ -141,11 +142,12 @@ Return
 """
 predict_y
 
-function predict_y(
-    model::AbstractGPModel, X_test::AbstractMatrix, state=nothing; obsdim::Int=1
-)
-    return predict_y(model, KernelFunctions.vec_of_vecs(X_test; obsdim), state)
-end
+# function predict_y(
+#     model::AbstractGPModel, X_test::AbstractMatrix, state=nothing; obsdim::Int=1
+# )
+#     @info "pred_y 1"
+#     return predict_y(model, KernelFunctions.vec_of_vecs(X_test; obsdim), state)
+# end
 
 @traitfn function predict_y(
     model::TGP, X_test::AbstractVector, state=nothing
@@ -156,19 +158,6 @@ end
 
 function predict_y(l::MultiClassLikelihood, μs::Tuple{Vararg{<:AbstractVector{<:Real}}})
     return [l.class_mapping[argmax([μ[i] for μ in μs])] for i in 1:length(μs[1])]
-end
-
-function predict_y(
-    l::MultiClassLikelihood,
-    μs::Tuple{<:Tuple{Vararg{<:AbstractVector{<:AbstractVector{<:Real}}}}},
-)
-    return predict_y(l, only(μs))
-end
-
-predict_y(l::EventLikelihood, μ::AbstractVector{<:Real}) = mean.(l.(μ))
-
-function predict_y(l::EventLikelihood, μ::Tuple{<:AbstractVector})
-    return predict_y(l, only(μ))
 end
 
 """
@@ -183,24 +172,21 @@ Return the probability distribution p(y_test|model,X_test) :
 """
 proba_y
 
-# function proba_y(
-#     model::AbstractGPModel, X_test::AbstractMatrix, state=nothing; obsdim::Int=1
-# )
-#     @info "proba_y0"
-#     return proba_y(model, KernelFunctions.vec_of_vecs(X_test; obsdim))
-# end
 
 @traitfn function proba_y(
-    model::TGP, X_test::AbstractVector, state=nothing
+    model::TGP, X_test::AbstractVector, state=nothing, diag=false, nSamples=100
 ) where {TGP <: AbstractGPModel; !IsMultiOutput{TGP}}
-    μ_f, Σ_f = _predict_f(model, X_test, state; cov=true)
-    return compute_proba(model.likelihood, μ_f, Σ_f)
+    μ_f, Σ_f = _predict_f(model, X_test, state; cov=true, diag=diag)
+    println()
+    println(length( Σ_f))
+    println(size(Σ_f[1]))
+    return compute_proba_upgrade(model.likelihood, μ_f, Σ_f, nSamples)
 end
 
-function proba_multi_y(model::AbstractGPModel, X_test::AbstractVector, state)
-    μ_f, Σ_f = _predict_f(model, X_test, state; cov=true)
-    return preds = compute_proba.(likelihood(model), μ_f, Σ_f)
-end
+# function proba_multi_y(model::AbstractGPModel, X_test::AbstractVector, state)
+#     μ_f, Σ_f = _predict_f(model, X_test, state; cov=true)
+#     return preds = compute_proba.(likelihood(model), μ_f, Σ_f)
+# end
 
 # function compute_proba(
 #     l::AbstractLikelihood, μ::Tuple{<:AbstractVector}, σ²::Tuple{<:AbstractVector}
