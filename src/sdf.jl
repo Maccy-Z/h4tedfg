@@ -15,13 +15,13 @@ function generate_nd_standard_mvn(dim::Int, n_samples::Int)
     return rand(dist, n_samples)
 end
 
-function transform_samples(samples, μ, Σ) where T
+function transform_samples(samples, μ, Σ)
     L = cholesky(Σ).L
     transformed_samples = μ .+ L * samples
     return transformed_samples
 end
 
-function compute_mean_covariance(data) where T
+function compute_mean_covariance(data)
     # Number of samples
     n = size(data, 2)
 
@@ -41,9 +41,9 @@ end
 μs = [0.0, 0.6]
 Σs_full = [1.0 0.23; 0.23 2.0] # Full covariances
 
-samples_true = sample_multivariate_normals(μs, Σs_full, 1000)
+samples_true = sample_multivariate_normals(μs, Σs_full, 10)
 
-std_norm = generate_nd_standard_mvn(2, 1000)
+std_norm = generate_nd_standard_mvn(2, 4000)
 samples_regen = transform_samples(std_norm, μs, Σs_full)
 
 true_mean_cov = compute_mean_covariance(samples_true)

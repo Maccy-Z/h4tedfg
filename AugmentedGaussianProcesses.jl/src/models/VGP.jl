@@ -31,6 +31,8 @@ mutable struct VGP{
     verbose::Int #Level of printing information
     atfrequency::Int
     trained::Bool
+    length_bounds::Tuple{Real,Real}
+    var_bounds::Tuple{Real,Real}
 end
 
 function VGP(
@@ -44,6 +46,8 @@ function VGP(
     atfrequency::Integer=1,
     mean::Union{<:Real,AbstractVector{<:Real},PriorMean}=ZeroMean(),
     obsdim::Int=1,
+    length_bounds::Tuple{Real,Real}=(0.1,5.),
+    var_bounds::Tuple{Real,Real}=(0.1,100.),
 )
     X, T = wrap_X(X, obsdim)
     y = check_data!(y, likelihood)
@@ -76,7 +80,7 @@ function VGP(
     end
 
     return VGP{T,typeof(likelihood),typeof(inference),typeof(data),n_latent(likelihood)}(
-        data, latentf, likelihood, inference, verbose, atfrequency, false
+        data, latentf, likelihood, inference, verbose, atfrequency, false, length_bounds, var_bounds
     )
 end
 

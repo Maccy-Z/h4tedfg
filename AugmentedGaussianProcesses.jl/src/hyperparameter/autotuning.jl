@@ -41,21 +41,27 @@ include("forwarddiff_rules.jl")
         end
 
         # Limit kernel parameters
+        min_len, max_len = m.length_bounds
+        min_var, max_var = m.var_bounds
         for gp in m.f
             kernel = gp.prior.kernel
-            # Lengthscale
-            lengthscale = kernel.transform.s[1]
-            length_upper = 5.
-            if lengthscale >= length_upper
-                @info "Lengthscale $lengthscale is too large, setting to upper bound"
-                kernel.transform.s[1] = length_upper
+            # Lengthscale (kernel stores inverse lengthscale)
+            lengthscale = 1 / kernel.transform.s[1]
+            if lengthscale >= max_len
+                @info "Lengthscale $lengthscale is too large, setting to upper bound $max_len"
+                kernel.transform.s[1] = 1 / max_len
+            elseif lengthscale <= min_len
+                @info "Lengthscale $lengthscale is too small, setting to lower bound $min_len"
+                kernel.transform.s[1] = 1 / min_len
             end
             # Sigma
             σ² = kernel.kernel.σ²[1]
-            σ_upper = 100000
-            if σ² >= σ_upper
-                @info "Sigma $σ² is too large, setting to upper bound"
-                kernel.kernel.σ²[1] = σ_upper
+            if σ² >= max_var
+                @info "Var $σ² is too large, setting to upper bound $max_var"
+                kernel.kernel.σ²[1] = max_var
+            elseif σ² <= min_var
+                @info "Var $σ² is too small, setting to lower bound $min_var"
+                kernel.kernel.σ²[1] = min_var
             end
         end
 

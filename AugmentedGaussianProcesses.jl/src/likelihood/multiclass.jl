@@ -113,7 +113,6 @@ function sample_multivariate_normals(means, covariances, n_samples::Int)
 
     # Iterate over each mean-covariance pair
     for i in 1:length(means)
-        #samples = sample_multivariate_normal(means[i], covariances[i], n_samples)
         dist = MvNormal(means[i], covariances[i])
         samples = rand(dist, n_samples)
         push!(all_samples, samples)
@@ -125,12 +124,9 @@ end
 function compute_proba(
     l::MultiClassLikelihood,
     μ::Tuple{Vararg{<:AbstractVector{T}}},
-    σ²::Tuple{Vararg{<:AbstractArray{T}}},
+    σ²::Tuple{Vararg{<:AbstractVector{T}}},
     nSamples::Integer=200,
 ) where {T<:Real}
-    μ_old = μ
-    σ²_old = σ²
-
     K = n_class(l) # Number of classes
     n = length(μ[1]) # Number of test points
     μ = hcat(μ...) # Concatenate means together
@@ -138,19 +134,35 @@ function compute_proba(
     σ² = hcat(σ²...) # Concatenate variances together
     σ² = [σ²[i, :] for i in 1:n] # Create one vector per sample
     pred = zeros(T, n, K) # Empty container for the predictions
-
     for i in 1:n
+        # p = MvNormal(μ[i],sqrt.(abs.(σ²[i])))
         # p = MvNormal(μ[i],sqrt.(max.(eps(T),σ²[i]))) #WARNING DO NOT USE VARIANCE
-        #l(0.)
         pred[i, :] .= l(μ[i])
-        # println(μ[i])
         # for _ in 1:nSamples
         # end
     end
     return NamedTuple{Tuple(Symbol.(l.class_mapping))}(eachcol(pred))
 end
 
-function compute_proba_upgrade(
+function compute_proba_mean(
+    l::MultiClassLikelihood,
+    μ::Tuple{Vararg{<:AbstractVector{T}}},
+) where {T<:Real}
+
+    K = n_class(l) # Number of classes
+    n = length(μ[1]) # Number of test points
+    μ = hcat(μ...) # Concatenate means together
+    μ = [μ[i, :] for i in 1:n] # Create one vector per sample
+    pred = zeros(T, n, K) # Empty container for the predictions
+
+    for i in 1:n
+        pred[i, :] .= l(μ[i])
+    end
+    return pred #NamedTuple{Tuple(Symbol.(l.class_mapping))}(eachcol(pred))
+end
+
+
+function compute_proba_full(
     l::MultiClassLikelihood,
     μ::Tuple{Vararg{<:AbstractVector{T}}},
     σ²::Tuple{Vararg{<:AbstractArray{T}}},
@@ -161,10 +173,6 @@ function compute_proba_upgrade(
 
     K = n_class(l) # Number of classes
     n = length(μ[1]) # Number of test points
-    μ = hcat(μ...) # Concatenate means together
-    μ = [μ[i, :] for i in 1:n] # Create one vector per sample
-    σ² = hcat(σ²...) # Concatenate variances together
-    σ² = [σ²[i, :] for i in 1:n] # Create one vector per sample
     pred = zeros(T, n, K) # Empty container for the predictions
 
     gaussians = sample_multivariate_normals(μ_old, σ²_old, nSamples) # Shape (K, nSamples, n)
