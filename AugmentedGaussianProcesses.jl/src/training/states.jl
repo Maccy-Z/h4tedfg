@@ -83,19 +83,19 @@ function init_opt_state(gp::SparseVarLatent{T}, vi::VariationalInference) where 
     return state
 end
 
-function init_opt_state(gp::OnlineVarLatent{T}, vi::VariationalInference) where {T}
-    state = (; ∇η₁=zero(mean(gp)), ∇η₂=zero(cov(gp).data))
-    if is_stochastic(vi)
-        state_η₁ = state(opt(vi), nat1(gp))
-        state_η₂ = state(opt(vi), nat2(gp).data)
-        state = merge(state, (; state_η₁, state_η₂))
-    end
-    k = dim(gp)
-    prev𝓛ₐ = zero(T)
-    invDₐ = Symmetric(Matrix{T}(I(k)))
-    prevη₁ = zeros(T, k)
-    return merge(state, (; previous_gp=(; prev𝓛ₐ, invDₐ, prevη₁)))
-end
+# function init_opt_state(gp::OnlineVarLatent{T}, vi::VariationalInference) where {T}
+#     state = (; ∇η₁=zero(mean(gp)), ∇η₂=zero(cov(gp).data))
+#     if is_stochastic(vi)
+#         state_η₁ = state(opt(vi), nat1(gp))
+#         state_η₂ = state(opt(vi), nat2(gp).data)
+#         state = merge(state, (; state_η₁, state_η₂))
+#     end
+#     k = dim(gp)
+#     prev𝓛ₐ = zero(T)
+#     invDₐ = Symmetric(Matrix{T}(I(k)))
+#     prevη₁ = zeros(T, k)
+#     return merge(state, (; previous_gp=(; prev𝓛ₐ, invDₐ, prevη₁)))
+# end
 
 function init_state_A(state, model::AbstractGPModel)
     A_state = [

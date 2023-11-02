@@ -7,7 +7,6 @@ using Printf
 Base.show(io::IO, f::Float64) = @printf(io, "%1.2f", f)
 
 
-# AugmentedGaussianProcesses.setadbackend(:ForwardDiff)
 # Make data
 n_data = 100
 n_dim = 2

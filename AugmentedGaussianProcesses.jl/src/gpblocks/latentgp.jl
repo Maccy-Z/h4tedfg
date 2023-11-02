@@ -89,48 +89,48 @@ end
 
 ## Online Sparse Variational Process
 
-mutable struct OnlineVarLatent{
-    T,
-    Tpr<:GPPrior,
-    Tpo<:AbstractVarPosterior{T},
-    Topt,
-    TZ<:AbstractVector,
-    TZalg<:InducingPoints.OnIPSA,
-    TZopt,
-} <: AbstractVarLatent{T,Tpo,Tpr}
-    prior::Tpr
-    post::Tpo
-    Z::TZ
-    Zₐ::TZ
-    Zalg::TZalg
-    Zupdated::Bool
-    opt::Topt
-    Zopt::TZopt
-end
+# mutable struct OnlineVarLatent{
+#     T,
+#     Tpr<:GPPrior,
+#     Tpo<:AbstractVarPosterior{T},
+#     Topt,
+#     TZ<:AbstractVector,
+#     TZalg<:InducingPoints.OnIPSA,
+#     TZopt,
+# } <: AbstractVarLatent{T,Tpo,Tpr}
+#     prior::Tpr
+#     post::Tpo
+#     Z::TZ
+#     Zₐ::TZ
+#     Zalg::TZalg
+#     Zupdated::Bool
+#     opt::Topt
+#     Zopt::TZopt
+# end
 
-function OnlineVarLatent(
-    T::DataType,
-    dim::Int,
-    Z::AbstractVector,
-    Zalg::InducingPoints.OnIPSA,
-    kernel::Kernel,
-    mean::PriorMean,
-    opt=nothing,
-    Zopt=nothing,
-)
-    return OnlineVarLatent(
-        GPPrior(deepcopy(kernel), deepcopy(mean)),
-        OnlineVarPosterior{T}(dim),
-        Z,
-        deepcopy(Z),
-        Zalg,
-        false,
-        deepcopy(opt),
-        deepcopy(Zopt),
-    )
-end
+# function OnlineVarLatent(
+#     T::DataType,
+#     dim::Int,
+#     Z::AbstractVector,
+#     Zalg::InducingPoints.OnIPSA,
+#     kernel::Kernel,
+#     mean::PriorMean,
+#     opt=nothing,
+#     Zopt=nothing,
+# )
+#     return OnlineVarLatent(
+#         GPPrior(deepcopy(kernel), deepcopy(mean)),
+#         OnlineVarPosterior{T}(dim),
+#         Z,
+#         deepcopy(Z),
+#         Zalg,
+#         false,
+#         deepcopy(opt),
+#         deepcopy(Zopt),
+#     )
+# end
 
-@traitimpl IsSparse{OnlineVarLatent}
+#@traitimpl IsSparse{OnlineVarLatent}
 
 ## Variational Student-T Process
 
@@ -217,14 +217,14 @@ end
 var_f(Σ::AbstractMatrix, κ::AbstractMatrix, K̃::AbstractVector) = diag_ABt(κ * Σ, κ) + K̃
 
 Zview(gp::SparseVarLatent) = gp.Z
-Zview(gp::OnlineVarLatent) = gp.Z
+#Zview(gp::OnlineVarLatent) = gp.Z
 
 setZ!(gp::AbstractLatent, Z::AbstractVector) = gp.Z = Z
 
 opt(gp::AbstractLatent) = gp.opt
 Zopt(::AbstractLatent) = nothing
 Zopt(gp::SparseVarLatent) = gp.Zopt
-Zopt(gp::OnlineVarLatent) = gp.Zopt
+#Zopt(gp::OnlineVarLatent) = gp.Zopt
 
 function compute_K(gp::AbstractLatent, X::AbstractVector, jitt::Real)
     chol = cholesky(kernelmatrix(kernel(gp), X) + jitt * I)
@@ -243,24 +243,24 @@ function compute_κ(gp::SparseVarLatent, X::AbstractVector, K, jitt::Real)
     return (; Knm, κ, K̃)
 end
 
-function compute_κ(gp::OnlineVarLatent{T}, X::AbstractVector, K, jitt::Real) where {T}
-    k = dim(gp)
-    # Covariance with the model at t-1
-    if isempty(gp.Zₐ)
-        Kab = zeros(T, k, k)
-        κₐ = I
-        K̃ₐ = zero(Kab)
-    else
-        Kab = kernelmatrix(kernel(gp), gp.Zₐ, gp.Z)
-        κₐ = Kab / K
-        Kₐ = Symmetric(kernelmatrix(kernel(gp), gp.Zₐ) + jitt * I)
-        K̃ₐ = Kₐ - κₐ * transpose(Kab)
-    end
-
-    # Covariance with a new batch
-    Knm = kernelmatrix(kernel(gp), X, gp.Z)
-    κ = Knm / K
-    K̃ = kernelmatrix_diag(kernel(gp), X) .+ jitt - diag_ABt(κ, Knm)
-    all(K̃ .> 0) || error("K̃ has negative values")
-    return (; Kab, κₐ, K̃ₐ, Knm, κ, K̃)
-end
+# function compute_κ(gp::OnlineVarLatent{T}, X::AbstractVector, K, jitt::Real) where {T}
+#     k = dim(gp)
+#     # Covariance with the model at t-1
+#     if isempty(gp.Zₐ)
+#         Kab = zeros(T, k, k)
+#         κₐ = I
+#         K̃ₐ = zero(Kab)
+#     else
+#         Kab = kernelmatrix(kernel(gp), gp.Zₐ, gp.Z)
+#         κₐ = Kab / K
+#         Kₐ = Symmetric(kernelmatrix(kernel(gp), gp.Zₐ) + jitt * I)
+#         K̃ₐ = Kₐ - κₐ * transpose(Kab)
+#     end
+#
+#     # Covariance with a new batch
+#     Knm = kernelmatrix(kernel(gp), X, gp.Z)
+#     κ = Knm / K
+#     K̃ = kernelmatrix_diag(kernel(gp), X) .+ jitt - diag_ABt(κ, Knm)
+#     all(K̃ .> 0) || error("K̃ has negative values")
+#     return (; Kab, κₐ, K̃ₐ, Knm, κ, K̃)
+# end

@@ -28,7 +28,6 @@ AnalyticVI
     AnalyticSVI(nMinibatch::Int; ϵ::T=1e-5, optimiser=RobbinsMonro())
 
 Stochastic Variational Inference solver for conjugate or conditionally conjugate likelihoods (non-gaussian are made conjugate via augmentation).
-See [`AnalyticVI`](@ref) for reference
 
 ## Arguments
 
@@ -245,9 +244,9 @@ function global_update!(gp::SparseVarLatent, opt::AVIOptimizer, i::AnalyticVI, o
     return opt_state
 end
 
-function global_update!(gp::OnlineVarLatent, ::Any, ::Any)
-    return global_update!(gp)
-end
+# function global_update!(gp::OnlineVarLatent, ::Any, ::Any)
+#     return global_update!(gp)
+# end
 
 # Computation of the ELBO for all model
 # There are 4 parts : the (augmented) log-likelihood, the Gaussian KL divergence

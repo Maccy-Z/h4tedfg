@@ -20,7 +20,7 @@ export NumericalVI,
 export PriorMean, ZeroMean, ConstantMean, EmpiricalMean, AffineMean # Prior means
 #Useful functions
 export train!, sample
-export predict_f, predict_y, proba_y
+export predict_f, predict_y, proba_y, MakeFastGP
 export fstar
 export ELBO
 export covariance, diag_covariance, prior_mean
@@ -30,7 +30,7 @@ export @augmodel
 using Reexport
 @reexport using KernelFunctions
 @reexport using Optimisers
-@reexport using InducingPoints
+# @reexport using InducingPoints
 
 #using Flux
 using AbstractMCMC: AbstractMCMC, step, sample
@@ -53,8 +53,8 @@ using Distributions:
     Laplace,
     MvNormal,
     Gamma
-using FastGaussQuadrature: gausshermite
-using ForwardDiff
+# using FastGaussQuadrature: gausshermite
+# using ForwardDiff
 using GPLikelihoods: GPLikelihoods, AbstractLink, AbstractLikelihood
 using GPLikelihoods:
     BernoulliLikelihood, PoissonLikelihood, HeteroscedasticGaussianLikelihood

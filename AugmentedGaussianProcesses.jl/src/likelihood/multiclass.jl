@@ -1,3 +1,5 @@
+import LinearAlgebra as LA
+
 mutable struct MultiClassLikelihood{L} <: AbstractLikelihood
     invlink::L
     n_class::Int # Number of classes
@@ -104,22 +106,7 @@ function create_one_hot(l::MultiClassLikelihood, y)
     return Y
 end
 
-function sample_multivariate_normals(means, covariances, n_samples::Int)
-    if length(means) != length(covariances)
-        throw(ArgumentError("Number of means does not match number of covariances"))
-    end
 
-    all_samples = []
-
-    # Iterate over each mean-covariance pair
-    for i in 1:length(means)
-        dist = MvNormal(means[i], covariances[i])
-        samples = rand(dist, n_samples)
-        push!(all_samples, samples)
-    end
-
-    return all_samples
-end
 
 function compute_proba(
     l::MultiClassLikelihood,
@@ -166,16 +153,19 @@ function compute_proba_full(
     l::MultiClassLikelihood,
     μ::Tuple{Vararg{<:AbstractVector{T}}},
     σ²::Tuple{Vararg{<:AbstractArray{T}}},
-    nSamples::Integer=200,
+    nSamples::Integer;
+    sampler=nothing
 ) where {T<:Real}
-    μ_old = μ
-    σ²_old = σ²
-
     K = n_class(l) # Number of classes
     n = length(μ[1]) # Number of test points
     pred = zeros(T, n, K) # Empty container for the predictions
 
-    gaussians = sample_multivariate_normals(μ_old, σ²_old, nSamples) # Shape (K, nSamples, n)
+    if isnothing(sampler)
+        gaussians = sample_multivariate_normals(μ, σ², nSamples) # Shape (K, n, nSamples)
+    else
+        gaussians = sample_multivariate_normals(sampler, μ, σ², n_repeats=nSamples) # Shape (K, n, nSamples)
+    end
+
     gaussians = cat(gaussians..., dims=3)     # Shape (n, nSamples, K)
     gaussians = reshape(gaussians, :, K)      # Shape (n * nSamples, K)
 

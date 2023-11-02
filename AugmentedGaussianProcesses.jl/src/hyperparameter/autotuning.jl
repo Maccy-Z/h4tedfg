@@ -43,24 +43,24 @@ include("forwarddiff_rules.jl")
         # Limit kernel parameters
         min_len, max_len = m.length_bounds
         min_var, max_var = m.var_bounds
-        for gp in m.f
+        for (phase, gp) in enumerate(m.f)
             kernel = gp.prior.kernel
             # Lengthscale (kernel stores inverse lengthscale)
             lengthscale = 1 / kernel.transform.s[1]
             if lengthscale >= max_len
-                @info "Lengthscale $lengthscale is too large, setting to upper bound $max_len"
+                @info "Lengthscale $lengthscale is too large for phase $phase, setting to upper bound $max_len"
                 kernel.transform.s[1] = 1 / max_len
             elseif lengthscale <= min_len
-                @info "Lengthscale $lengthscale is too small, setting to lower bound $min_len"
+                @info "Lengthscale $lengthscale is too small for phase $phase, setting to lower bound $min_len"
                 kernel.transform.s[1] = 1 / min_len
             end
             # Sigma
             σ² = kernel.kernel.σ²[1]
             if σ² >= max_var
-                @info "Var $σ² is too large, setting to upper bound $max_var"
+                @info "Var $σ² is too large for phase $phase, setting to upper bound $max_var"
                 kernel.kernel.σ²[1] = max_var
             elseif σ² <= min_var
-                @info "Var $σ² is too small, setting to lower bound $min_var"
+                @info "Var $σ² is too small for phase $phase, setting to lower bound $min_var"
                 kernel.kernel.σ²[1] = min_var
             end
         end
@@ -289,32 +289,32 @@ function hyperparameter_gradient_function(
     )
 end
 
-function hyperparameter_gradient_function(gp::OnlineVarLatent{T}) where {T<:Real}
-    μ₀ = pr_mean(gp, gp.Z)
-    A =
-        (I(dim(gp)) - pr_cov(gp) \ (cov(gp) + (mean(gp) - μ₀) * transpose(mean(gp) - μ₀))) /
-        pr_cov(gp)
-    κΣ = gp.κ * cov(gp)
-    κₐΣ = gp.κₐ * cov(gp)
-    return (
-        function (Jmm, Jnm, Jnn, Jab, Jaa, ∇E_μ, ∇E_Σ, i, opt)
-            ∇E = hyperparameter_expec_gradient(gp, ∇E_μ, ∇E_Σ, i, opt, κΣ, Jmm, Jnm, Jnn)
-            ∇KLₐ = hyperparameter_online_gradient(gp, κₐΣ, Jmm, Jab, Jaa)
-            ∇KL = hyperparameter_KL_gradient(Jmm, A)
-            return ∇E + ∇KLₐ - ∇KL
-        end, # Function gradient given kernel parameters
-        function (Jmm, Jnm, Jab, ∇E_μ, ∇E_Σ, i, opt)
-            return hyperparameter_expec_gradient(
-                gp, ∇E_μ, ∇E_Σ, i, opt, κΣ, Jmm, Jnm, zero(gp.K̃)
-            ) + hyperparameter_online_gradient(
-                gp, κₐΣ, Jmm, Jab, zeros(T, length(gp.Zₐ), length(gp.Zₐ))
-            ) - hyperparameter_KL_gradient(Jmm, A)
-        end, # Function gradient given inducing points locations
-        function ()
-            return -(pr_cov(gp) \ (μ₀ - mean(gp)))
-        end,
-    ) # Function gradient given mean prior
-end
+# function hyperparameter_gradient_function(gp::OnlineVarLatent{T}) where {T<:Real}
+#     μ₀ = pr_mean(gp, gp.Z)
+#     A =
+#         (I(dim(gp)) - pr_cov(gp) \ (cov(gp) + (mean(gp) - μ₀) * transpose(mean(gp) - μ₀))) /
+#         pr_cov(gp)
+#     κΣ = gp.κ * cov(gp)
+#     κₐΣ = gp.κₐ * cov(gp)
+#     return (
+#         function (Jmm, Jnm, Jnn, Jab, Jaa, ∇E_μ, ∇E_Σ, i, opt)
+#             ∇E = hyperparameter_expec_gradient(gp, ∇E_μ, ∇E_Σ, i, opt, κΣ, Jmm, Jnm, Jnn)
+#             ∇KLₐ = hyperparameter_online_gradient(gp, κₐΣ, Jmm, Jab, Jaa)
+#             ∇KL = hyperparameter_KL_gradient(Jmm, A)
+#             return ∇E + ∇KLₐ - ∇KL
+#         end, # Function gradient given kernel parameters
+#         function (Jmm, Jnm, Jab, ∇E_μ, ∇E_Σ, i, opt)
+#             return hyperparameter_expec_gradient(
+#                 gp, ∇E_μ, ∇E_Σ, i, opt, κΣ, Jmm, Jnm, zero(gp.K̃)
+#             ) + hyperparameter_online_gradient(
+#                 gp, κₐΣ, Jmm, Jab, zeros(T, length(gp.Zₐ), length(gp.Zₐ))
+#             ) - hyperparameter_KL_gradient(Jmm, A)
+#         end, # Function gradient given inducing points locations
+#         function ()
+#             return -(pr_cov(gp) \ (μ₀ - mean(gp)))
+#         end,
+#     ) # Function gradient given mean prior
+# end
 
 ## Gradient with respect to hyperparameter for analytical VI ##
 function hyperparameter_expec_gradient(
@@ -356,27 +356,27 @@ function hyperparameter_expec_gradient(
     return ρ(i) * (dμ + dΣ)
 end
 
-function hyperparameter_online_gradient(
-    gp::AbstractLatent,
-    κₐΣ::Matrix{<:Real},
-    Jmm::AbstractMatrix{<:Real},
-    Jab::AbstractMatrix{<:Real},
-    Jaa::AbstractMatrix{<:Real},
-)
-    ιₐ = (Jab - gp.κₐ * Jmm) / pr_cov(gp)
-    trace_term =
-        -sum(
-            trace_ABt.(
-                [gp.invDₐ],
-                [
-                    Jaa,
-                    2 * ιₐ * transpose(κₐΣ),
-                    -ιₐ * transpose(gp.Kab),
-                    -gp.κₐ * transpose(Jab),
-                ],
-            ),
-        ) / 2
-    term_1 = dot(gp.prevη₁, ιₐ * mean(gp))
-    term_2 = -dot(ιₐ * mean(gp), gp.invDₐ * gp.κₐ * mean(gp))
-    return trace_term + term_1 + term_2
-end
+# function hyperparameter_online_gradient(
+#     gp::AbstractLatent,
+#     κₐΣ::Matrix{<:Real},
+#     Jmm::AbstractMatrix{<:Real},
+#     Jab::AbstractMatrix{<:Real},
+#     Jaa::AbstractMatrix{<:Real},
+# )
+#     ιₐ = (Jab - gp.κₐ * Jmm) / pr_cov(gp)
+#     trace_term =
+#         -sum(
+#             trace_ABt.(
+#                 [gp.invDₐ],
+#                 [
+#                     Jaa,
+#                     2 * ιₐ * transpose(κₐΣ),
+#                     -ιₐ * transpose(gp.Kab),
+#                     -gp.κₐ * transpose(Jab),
+#                 ],
+#             ),
+#         ) / 2
+#     term_1 = dot(gp.prevη₁, ιₐ * mean(gp))
+#     term_2 = -dot(ιₐ * mean(gp), gp.invDₐ * gp.κₐ * mean(gp))
+#     return trace_term + term_1 + term_2
+# end

@@ -27,11 +27,11 @@ function global_update!(gp::AbstractLatent)
     return gp.post.μ .= cov(gp) * nat1(gp)
 end
 
-## For the online case, the size may vary and inplace updates are note valid
-function global_update!(gp::OnlineVarLatent)
-    gp.post.Σ = -inv(nat2(gp)) / 2
-    return gp.post.μ = cov(gp) * nat1(gp)
-end
+# ## For the online case, the size may vary and inplace updates are note valid
+# function global_update!(gp::OnlineVarLatent)
+#     gp.post.Σ = -inv(nat2(gp)) / 2
+#     return gp.post.μ = cov(gp) * nat1(gp)
+# end
 
 ## Default function for getting a view on y
 batchsize(inf::AbstractInference) = inf.batchsize

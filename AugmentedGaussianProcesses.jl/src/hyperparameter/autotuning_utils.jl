@@ -61,8 +61,8 @@ function update_kernel!(opt, k::Union{Kernel,Transform}, g::NamedTuple, state::N
 end
 
 function update_kernel!(opt, x::AbstractArray, g::AbstractArray, state)
-    # Edit to stabalise training by not exponenting.
-    g = clamp.(g, -100, 100)
+    # Edit to stabalise training by not exponenting and clamping gradients.
+    g = clamp.(g, -50, 50)
     state, Δ = Optimisers.apply(opt, state, x, g)
 
     @. x = abs(x + Δ)

@@ -1,15 +1,34 @@
 using AugmentedGaussianProcesses
+using Pkg
+#Pkg.add("Distributions")
+import Distributions as Dist
+import LinearAlgebra as LA
+import Statistics as Stat
 
-function make_GP(X, y; n_class::Int, init_sigma::Real, init_scale::Real)
+function make_sampler(n_samples)
+    return MakeFastGP(n_samples=n_samples)
+end
+
+
+function make_GP(X, y; n_class::Int, init_sigma::Real, init_scale::Real, optimiser=nothing)
     #kernel = init_sigma * SqExponentialKernel() ∘ ScaleTransform(init_scale)
     kernel = init_sigma * Matern32Kernel() ∘ ScaleTransform(init_scale)
+
+    if optimiser == "ADAM"
+        optimiser = Optimisers.ADAM(0.01)
+    elseif optimiser == "SGD"
+        optimiser = Optimisers.Descent(0.01)
+    else
+        optimiser = nothing
+    end
+
     m = VGP(
         X,
         y,
         kernel,
         LogisticSoftMaxLikelihood(n_class),
         AnalyticVI(),
-        optimiser=Optimisers.Descent(0.005),
+        optimiser=optimiser,
         obsdim=1,
         length_bounds=(0.2, 10),
         var_bounds=(0.1, 100.),
@@ -30,39 +49,24 @@ function train_GP(m::AbstractGPModel; n_iter::Int)
         push!(inv_lens, inv_len)
     end
 
-    return vars, inv_lens
+    return (vars, inv_lens)
 end
 
-function pred_proba(m, X; diag, model_cov)
+function pred_proba(m, X; full_cov, model_cov, nSamples=100)
     # X must be a vector of vectors, not matrix
     X = [row for row in eachrow(X)]
 
-    probs, fs = proba_y(m, X, diag=diag, model_cov=model_cov)
-    return probs, fs
+    probs, fs = proba_y(m, X, diag=!full_cov, model_cov=model_cov, nSamples=nSamples)
+    return (probs, fs)
 end
 
-# Fast normal sampling
-struct FastGP
-    norm_samples    # shape = (dim, n_samples)
-    n_samples::Int
+function pred_proba_sampler(m, X; full_cov, model_cov, nSamples=100, sampler=nothing)
+
+
+    # X must be a vector of vectors, not matrix
+    X = [row for row in eachrow(X)]
+
+    probs, fs = proba_y(m, X, diag=!full_cov, model_cov=model_cov, nSamples=nSamples, sampler=sampler)
+    return (probs, fs)
 end
 
-function MakeFastGP(;dim::Int, n_samples::Int)
-    μ = zeros(dim)
-    Σ = LA.I(dim)
-    dist = Dist.MvNormal(μ, Σ)
-    norm_samples = rand(dist, n_samples)
-
-    return FastGP(norm_samples, n_samples)
-end
-
-# Using FastGP, quicky convert to normal distribution
-function make_normals(GP_gen::FastGP, μ, Σ)
-
-    # Get std. matrix
-    L = LA.cholesky(Σ).L
-
-    samples = GP_gen.norm_samples
-    transformed_samples = μ .+ L * samples
-    return transformed_samples
-end

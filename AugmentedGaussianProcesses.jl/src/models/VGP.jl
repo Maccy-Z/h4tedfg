@@ -33,6 +33,7 @@ mutable struct VGP{
     trained::Bool
     length_bounds::Tuple{Real,Real}
     var_bounds::Tuple{Real,Real}
+    final_Ks
 end
 
 function VGP(
@@ -80,7 +81,7 @@ function VGP(
     end
 
     return VGP{T,typeof(likelihood),typeof(inference),typeof(data),n_latent(likelihood)}(
-        data, latentf, likelihood, inference, verbose, atfrequency, false, length_bounds, var_bounds
+        data, latentf, likelihood, inference, verbose, atfrequency, false, length_bounds, var_bounds, nothing
     )
 end
 

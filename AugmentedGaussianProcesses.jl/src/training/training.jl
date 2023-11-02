@@ -98,7 +98,10 @@ function train!(
     if verbose(model) > 0
         @info "Training ended after $(local_iter - 1) iterations. Total number of iterations $(n_iter(model))"
     end
-    state = merge(state, compute_Ks(model)) # Compute final version of the matrices for predictions
+    final_Ks = compute_Ks(model)
+    state = merge(state, final_Ks) # Compute final version of the matrices for predictions
+    model.final_Ks = final_Ks
+
     post_step!(model, state)
     set_trained!(model, true)
     return model, state
@@ -137,32 +140,6 @@ end
 #     return state
 # end
 
-# function update_parameters!(model::MOVGP, state, x, y)
-#     state = compute_kernel_matrices(model, state, x) # Recompute the matrices if necessary (always for the stochastic case, or when hyperparameters have been updated)
-#     state = update_A!(model, state, y)
-#     state = variational_updates(model, state, y)
-#     return state
-# end
-#
-# function update_parameters!(m::MOSVGP, state, x, y)
-#     state = compute_kernel_matrices(m, state, x) # Recompute the matrices if necessary (always for the stochastic case, or when hyperparameters have been updated)
-#     update_A!(m, state, y)
-#     state = variational_updates(m, state, y)
-#     return state
-# end
-#
-# function update_parameters!(m::VStP, state, x, y)
-#     state = compute_kernel_matrices(m, state, x) # Recompute the matrices if necessary (always for the stochastic case, or when hyperparameters have been updated)
-#     state = local_prior_updates!(m, state, x)
-#     state = variational_updates(m, state, y)
-#     return state
-# end
-
-# function compute_kernel_matrices(m::GP{T}, state, x, ::Bool) where {T}
-#     kernel_matrices = (; K=compute_K(m.f, x, T(jitt)))
-#     setHPupdated!(inference(m), false)
-#     return merge(state, (; kernel_matrices))
-# end
 
 
 @traitfn function compute_kernel_matrices(
