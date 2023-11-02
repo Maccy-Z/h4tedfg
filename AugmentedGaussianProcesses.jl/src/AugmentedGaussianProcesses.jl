@@ -88,6 +88,8 @@ include("models/AbstractGP.jl")
 include("gpblocks/latentgp.jl")
 include("models/GP.jl")
 include("models/VGP.jl")
+include("training/predictions.jl")
+
 #include("models/MCGP.jl")
 #include("models/SVGP.jl")
 #include("models/VStP.jl")
@@ -111,7 +113,6 @@ include("training/training.jl")
 include("training/sampling.jl")
 # include("training/onlinetraining.jl")
 include("hyperparameter/autotuning.jl")
-include("training/predictions.jl")
 include("ar_predict.jl")
 
 end #End Module

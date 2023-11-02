@@ -7,7 +7,7 @@ import LinearAlgebra as LA
 
 # Cache "random" numbers for fast sampling
 struct FastGP
-    norm_numbers    # length > dim * n_samples
+    norm_numbers::Vector{Float64}    # length > dim * n_samples
     length::Int
 end
 
@@ -29,11 +29,13 @@ function draw_normals(GP_gen::FastGP, n::Int)
 end
 
 
-
 # Using FastGP, quicky convert to normal distribution
-function sample_multivariate_normals(GP_gen::FastGP, μs, Σs; n_repeats::Int)
+function sample_multivariate_normals(GP_gen::FastGP, μs:: Tuple{Vararg{Vector{Float64}}},
+    Σs::Tuple{Vararg{LinearAlgebra.Symmetric{Float64, Matrix{Float64}}}}; n_repeats::Int)
     # μs.shape = (n_classes, n_points)
     # Return shape: (n_classes, n_repeats, n_points)
+    println("Type of Σs:", typeof(Σs))
+
     n_points = size(μs[1], 1)
     n_gaussains = n_points * n_repeats
 
@@ -52,7 +54,7 @@ function sample_multivariate_normals(GP_gen::FastGP, μs, Σs; n_repeats::Int)
     return multi_gaussians
 end
 
-function sample_multivariate_normals(means, covariances, n_samples::Int)
+function sample_multivariate_normals(::Nothing, means:: Tuple{Vararg{Vector{Float64}}}, covariances, n_repeats::Int)
     all_samples = []
 
     # Iterate over each mean-covariance pair
@@ -117,7 +119,7 @@ end
 
 
 function proba_y(
-    model::AbstractGPModel, X_test::AbstractVector; model_cov=true, diag=false, nSamples=1000, sampler::Union{FastGP, Nothing}=nothing)
+    model::AbstractGPModel, X_test::AbstractVector; model_cov::Bool=true, diag::Bool=false, nSamples::Int=1000, sampler::Union{FastGP, Nothing}=nothing)
     μ_f, Σ_f = _predict_f(model, X_test; cov=model_cov, diag=diag)
 
     if model_cov

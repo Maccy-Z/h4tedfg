@@ -1,6 +1,6 @@
 from julia.api import Julia
 
-jl = Julia()
+jl = Julia(runtime='/home/maccyz/julia-1.9.3/bin/julia')
 from julia import Main
 
 Main.include("./jl_GP_interface.jl")
@@ -50,7 +50,7 @@ def main():
     n_points = 100
     X, y = gen_data()
     X_test = test_data(n_points)
-    n_samples = 1000
+    n_samples = 400
     sampler_jl = Main.make_sampler(len(X_test) * n_samples)
 
     # Make the Gaussian process

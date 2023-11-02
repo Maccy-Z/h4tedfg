@@ -154,17 +154,14 @@ function compute_proba_full(
     μ::Tuple{Vararg{<:AbstractVector{T}}},
     σ²::Tuple{Vararg{<:AbstractArray{T}}},
     nSamples::Integer;
-    sampler=nothing
+    sampler::FastGP=nothing
 ) where {T<:Real}
     K = n_class(l) # Number of classes
     n = length(μ[1]) # Number of test points
     pred = zeros(T, n, K) # Empty container for the predictions
 
-    if isnothing(sampler)
-        gaussians = sample_multivariate_normals(μ, σ², nSamples) # Shape (K, n, nSamples)
-    else
-        gaussians = sample_multivariate_normals(sampler, μ, σ², n_repeats=nSamples) # Shape (K, n, nSamples)
-    end
+
+    gaussians = sample_multivariate_normals(sampler, μ, σ², n_repeats=nSamples) # Shape (K, n, nSamples)
 
     gaussians = cat(gaussians..., dims=3)     # Shape (n, nSamples, K)
     gaussians = reshape(gaussians, :, K)      # Shape (n * nSamples, K)
