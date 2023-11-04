@@ -20,7 +20,7 @@ export NumericalVI,
 export PriorMean, ZeroMean, ConstantMean, EmpiricalMean, AffineMean # Prior means
 #Useful functions
 export train!, sample
-export predict_f, predict_y, proba_y, MakeFastGP
+export predict_f, predict_y, proba_y, MakeFastGP, FastGP
 export fstar
 export ELBO
 export covariance, diag_covariance, prior_mean

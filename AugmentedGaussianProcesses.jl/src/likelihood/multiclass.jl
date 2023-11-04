@@ -108,32 +108,32 @@ end
 
 
 
-function compute_proba(
-    l::MultiClassLikelihood,
-    μ::Tuple{Vararg{<:AbstractVector{T}}},
-    σ²::Tuple{Vararg{<:AbstractVector{T}}},
-    nSamples::Integer=200,
-) where {T<:Real}
-    K = n_class(l) # Number of classes
-    n = length(μ[1]) # Number of test points
-    μ = hcat(μ...) # Concatenate means together
-    μ = [μ[i, :] for i in 1:n] # Create one vector per sample
-    σ² = hcat(σ²...) # Concatenate variances together
-    σ² = [σ²[i, :] for i in 1:n] # Create one vector per sample
-    pred = zeros(T, n, K) # Empty container for the predictions
-    for i in 1:n
-        # p = MvNormal(μ[i],sqrt.(abs.(σ²[i])))
-        # p = MvNormal(μ[i],sqrt.(max.(eps(T),σ²[i]))) #WARNING DO NOT USE VARIANCE
-        pred[i, :] .= l(μ[i])
-        # for _ in 1:nSamples
-        # end
-    end
-    return NamedTuple{Tuple(Symbol.(l.class_mapping))}(eachcol(pred))
-end
+# function compute_proba(
+#     l::MultiClassLikelihood,
+#     μ::Tuple{Vararg{<:AbstractVector{T}}},
+#     σ²::Tuple{Vararg{<:AbstractVector{T}}},
+#     nSamples::Integer=200,
+# ) where {T<:Real}
+#     K = n_class(l) # Number of classes
+#     n = length(μ[1]) # Number of test points
+#     μ = hcat(μ...) # Concatenate means together
+#     μ = [μ[i, :] for i in 1:n] # Create one vector per sample
+#     σ² = hcat(σ²...) # Concatenate variances together
+#     σ² = [σ²[i, :] for i in 1:n] # Create one vector per sample
+#     pred = zeros(T, n, K) # Empty container for the predictions
+#     for i in 1:n
+#         # p = MvNormal(μ[i],sqrt.(abs.(σ²[i])))
+#         # p = MvNormal(μ[i],sqrt.(max.(eps(T),σ²[i]))) #WARNING DO NOT USE VARIANCE
+#         pred[i, :] .= l(μ[i])
+#         # for _ in 1:nSamples
+#         # end
+#     end
+#     return NamedTuple{Tuple(Symbol.(l.class_mapping))}(eachcol(pred))
+# end
 
 function compute_proba_mean(
     l::MultiClassLikelihood,
-    μ::Tuple{Vararg{<:AbstractVector{T}}},
+    μ::Tuple{Vararg{<:Vector{T}}},
 ) where {T<:Real}
 
     K = n_class(l) # Number of classes
@@ -149,12 +149,15 @@ function compute_proba_mean(
 end
 
 
+# For full covariance matrix
 function compute_proba_full(
     l::MultiClassLikelihood,
-    μ::Tuple{Vararg{<:AbstractVector{T}}},
-    σ²::Tuple{Vararg{<:AbstractArray{T}}},
+    μ::Tuple{Vararg{<:Vector{T}}},
+    σ²::Union{Tuple{
+                Vararg{<:LinearAlgebra.Symmetric{T}}},  # For full covariance matrix
+                Tuple{Vararg{<:Vector{T}}}},            # For diagonal covariance matrix
     nSamples::Integer;
-    sampler::FastGP=nothing
+    sampler::FastGP
 ) where {T<:Real}
     K = n_class(l) # Number of classes
     n = length(μ[1]) # Number of test points
@@ -175,6 +178,35 @@ function compute_proba_full(
     stds = dropdims(stds, dims=2)   # Shape (n, K)
     return (means, stds)
 end
+
+# # For diagonal covariance matrix
+# function compute_proba_full(
+#     l::MultiClassLikelihood,
+#     μ::Tuple{Vararg{<:Vector{T}}},
+#     σ²::Tuple{Vararg{<:Vector{T}}},
+#     nSamples::Integer;
+#     sampler::FastGP
+# ) where {T<:Real}
+#     K = n_class(l) # Number of classes
+#     n = length(μ[1]) # Number of test points
+#     pred = zeros(T, n, K) # Empty container for the predictions
+#
+#
+#     gaussians = sample_diagonal_normals(sampler, μ, σ², n_repeats=nSamples) # Shape (K, n, nSamples)
+#
+#     gaussians = cat(gaussians..., dims=3)     # Shape (n, nSamples, K)
+#     gaussians = reshape(gaussians, :, K)      # Shape (n * nSamples, K)
+#
+#     probs = mapslices(l, gaussians, dims=2)  # Shape (n, nSamples, K)
+#     probs = reshape(probs, n, nSamples, K)
+#     means = mean(probs, dims=2)         # Shape (n, 1, K)
+#     means = dropdims(means, dims=2)   # Shape (n, K)
+#
+#     stds = std(probs, dims=2)         # Shape (n, 1, K)
+#     stds = dropdims(stds, dims=2)   # Shape (n, K)
+#     return (means, stds)
+# end
+
 
 function expec_loglike(
     model::AbstractGPModel{T,<:MultiClassLikelihood,<:NumericalVI}

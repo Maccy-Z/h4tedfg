@@ -2,8 +2,6 @@ import Random as Rand
 import LinearAlgebra as LA
 
 ## Nodes and weights for predictions based on quadrature
-# const pred_nodes, pred_weights = (x -> (x[1] .* sqrt2, x[2] ./ sqrtπ))(gausshermite(100))
-
 
 # Cache "random" numbers for fast sampling
 struct FastGP
@@ -24,17 +22,17 @@ function draw_normals(GP_gen::FastGP, n::Int)
     # Start point
     i = rand(1:k)
 
-    indices = [(i + j - 1) % k + 1 for j in 0:(n-1)]
+    #indices = [(i + j - 1) % k + 1 for j in 0:(n-1)]
+    indices = mod.(i:i+n-1, k) .+ 1
     return norm_numbers[indices]
 end
 
 
 # Using FastGP, quicky convert to normal distribution
 function sample_multivariate_normals(GP_gen::FastGP, μs:: Tuple{Vararg{Vector{Float64}}},
-    Σs::Tuple{Vararg{LinearAlgebra.Symmetric{Float64, Matrix{Float64}}}}; n_repeats::Int)
+    Σs::Tuple{Vararg{LA.Symmetric{Float64}}}; n_repeats::Int)
     # μs.shape = (n_classes, n_points)
     # Return shape: (n_classes, n_repeats, n_points)
-    println("Type of Σs:", typeof(Σs))
 
     n_points = size(μs[1], 1)
     n_gaussains = n_points * n_repeats
@@ -54,29 +52,32 @@ function sample_multivariate_normals(GP_gen::FastGP, μs:: Tuple{Vararg{Vector{F
     return multi_gaussians
 end
 
-function sample_multivariate_normals(::Nothing, means:: Tuple{Vararg{Vector{Float64}}}, covariances, n_repeats::Int)
-    all_samples = []
+# Don't bother using GP_gen since we don't sample that many gaussians.
+function sample_multivariate_normals(GP_gen::FastGP, means:: Tuple{Vararg{Vector{Float64}}}, covs::Tuple{Vararg{Vector{Float64}}}; n_repeats::Int)
 
+    all_samples = []
     # Iterate over each mean-covariance pair
     for i in 1:length(means)
-        dist = MvNormal(means[i], covariances[i])
-        samples = rand(dist, n_samples)
+        dist = MvNormal(means[i], covs[i])
+        samples = rand(dist, n_repeats)
         push!(all_samples, samples)
     end
 
     return all_samples
 end
 
+function _predict_f(
+    m::VGP, X_test::Matrix{Float64}; cov::Bool=true, diag::Bool=true
+)
+    T = Float64
 
-@traitfn function _predict_f(
-    m::TGP, X_test::AbstractArray; cov::Bool=true, diag::Bool=true
-) where {T,TGP<:AbstractGPModel{T};!IsMultiOutput{TGP}}
+    # Convert X_test to a vector of vectors
+    X_test = [row for row in eachrow(X_test)]
 
     Ks = if isnothing(m.final_Ks)
         compute_K.(m.f, Zviews(m), T(jitt))
     else
         getproperty.(m.final_Ks.kernel_matrices, :K)
-        #m.final_Ks
     end
 
 
@@ -91,6 +92,7 @@ end
             kernelmatrix_diag.(kernels(m), Ref(X_test)) .+
             Ref(T(jitt) * ones(T, size(X_test, 1)))
         σ²f = k_starstar .- diag_ABt.(k_star .* A, k_star)
+
         return (μf, σ²f)
     else
         k_starstar = kernelmatrix.(kernels(m), Ref(X_test)) .+ T(jitt) * [I]
@@ -101,25 +103,8 @@ end
 end
 
 
-
-function predict_f(
-    model::AbstractGPModel,
-    X_test::AbstractVector,
-    cov::Bool=false,
-    diag::Bool=true,
-)
-    return _predict_f(model, X_test; cov, diag)
-end
-
-
-function predict_y(
-    model::AbstractGPModel, X_test::AbstractVector)
-    return predict_y(likelihood(model), only(_predict_f(model, X_test; cov=false)))
-end
-
-
 function proba_y(
-    model::AbstractGPModel, X_test::AbstractVector; model_cov::Bool=true, diag::Bool=false, nSamples::Int=1000, sampler::Union{FastGP, Nothing}=nothing)
+    model::VGP, X_test::Matrix{Float64}; model_cov::Bool=true, diag::Bool=false, nSamples::Int=1000, sampler::Union{FastGP, Nothing}=nothing)
     μ_f, Σ_f = _predict_f(model, X_test; cov=model_cov, diag=diag)
 
     if model_cov
@@ -138,8 +123,25 @@ end
 
 
 
-function compute_proba_f(l::AbstractLikelihood, f::AbstractVector{<:Real})
-    return compute_proba.(l, f)
-end
+
+# function predict_f(
+#     model::AbstractGPModel,
+#     X_test::AbstractVector,
+#     cov::Bool=false,
+#     diag::Bool=true,
+# )
+#     return _predict_f(model, X_test; cov, diag)
+# end
+#
+#
+# function predict_y(
+#     model::AbstractGPModel, X_test::AbstractVector)
+#     return predict_y(likelihood(model), only(_predict_f(model, X_test; cov=false)))
+# end
+
+
+# function compute_proba_f(l::AbstractLikelihood, f::AbstractVector{<:Real})
+#     return compute_proba.(l, f)
+# end
 
 

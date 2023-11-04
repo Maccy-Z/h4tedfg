@@ -1,9 +1,10 @@
-from julia.api import Julia
-
-jl = Julia(runtime='/home/maccyz/julia-1.9.3/bin/julia')
-from julia import Main
-
-Main.include("./jl_GP_interface.jl")
+# from julia.api import Julia
+#
+# jl = Julia(runtime='/home/maccyz/julia-1.9.3/bin/julia')
+# from julia import Main
+#
+# Main.include("./jl_GP_interface.jl")
+from GP_interface2 import JuliaGP
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -15,19 +16,18 @@ def generate_cluster(center, n_points=100, std_dev=0.5):
 
 
 def gen_data():
-    # Generate 2D dataset
     n_points_per_cluster = 100
-    left_cluster = generate_cluster(center=[-1, 0], n_points=n_points_per_cluster)
-    right_cluster = generate_cluster(center=[1, 0], n_points=n_points_per_cluster)
-
-    # Labels for the clusters
-    left_labels = np.ones((n_points_per_cluster, 1))
-    right_labels = np.zeros((n_points_per_cluster, 1))
+    coords = [[1, 1], [0, 0], [-1, -1]]
+    # Generate 2D dataset
+    clusters, labels = [], []
+    for label, coord in enumerate(coords):
+        clusters.append(generate_cluster(coord, n_points=n_points_per_cluster))
+        labels.append(np.ones((n_points_per_cluster)) * label + 1)
 
     # Combine the datasets
-    X = np.vstack([left_cluster, right_cluster])
-    y = np.vstack([left_labels, right_labels]).ravel()
-    y += 1
+    X = np.vstack(clusters)
+    y = np.concatenate(labels)
+
     return X, y
 
 
@@ -51,28 +51,33 @@ def main():
     X, y = gen_data()
     X_test = test_data(n_points)
     n_samples = 400
-    sampler_jl = Main.make_sampler(len(X_test) * n_samples)
+    full_cov = True
+    julia_gp = JuliaGP()
+
+    julia_gp.make_sampler(len(X_test) * n_samples)
 
     # Make the Gaussian process
-    gp_jl = Main.make_GP(X, y, n_class=2, init_sigma=1., init_scale=1., optimiser="ADAM")
+    julia_gp.make_GP(X, y, n_class=3, init_sigma=1., init_scale=1., optimiser="ADAM")
 
     # Train the GP
-    vars, inv_lens = Main.train_GP(gp_jl, n_iter=1000)
+    vars, inv_lens = julia_gp.train_GP(n_iter=1000)
+    print("Trained")
 
     # Print kernel params
     for var, inv_len in zip(vars, inv_lens):
         print(f"variance: {var:.3g}, lengthscale: {1 / inv_len :.3g}")
 
     # Predict the labels for the test data
-    #(probs, stds), _ = Main.pred_proba(gp, X_test, diag=True, model_cov=True)
-    (probs, p_std), (f_mu, f_var) = Main.pred_proba_sampler(gp_jl, X_test, full_cov=True, model_cov=True, nSamples=n_samples, sampler=sampler_jl)
+    (probs, p_std), (f_mu, f_var) = julia_gp.pred_proba_sampler(X_test, full_cov=full_cov, model_cov=True, nSamples=n_samples)
 
     f_mu, f_std = np.array(f_mu), np.sqrt(np.abs(np.array(f_var)))
     probs, p_std = np.array(probs), np.array(p_std)
+    f_mu, f_std = f_mu[1], f_std[1]
+    probs, p_std = probs[:, 1], p_std[:, 1]
 
-
-    f_mu, f_std = f_mu[0], f_std[0]
-    probs, p_std = probs[:, 0], p_std[:, 0]
+    if full_cov:
+        f_std = np.diag(f_std)
+        print(f_std.shape)
 
     # Show the probs
     plt.subplot(1, 2, 1)
@@ -85,14 +90,15 @@ def main():
     plt.show()
 
     # Show the stds
-    # plt.subplot(1, 2, 1)
-    # plt.imshow(f_std.reshape((n_points, n_points)), origin="lower", extent=(-3, 3, -3, 3))
-    # plt.scatter(X[:, 0], X[:, 1], c=y, cmap="coolwarm", s=4)
+    plt.subplot(1, 2, 1)
+    plt.imshow(f_std.reshape((n_points, n_points)), origin="lower", extent=(-3, 3, -3, 3))
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap="coolwarm", s=4)
 
     plt.subplot(1, 2, 2)
     plt.imshow(p_std.reshape((n_points, n_points)), origin="lower", extent=(-3, 3, -3, 3))
     plt.scatter(X[:, 0], X[:, 1], c=y, cmap="coolwarm", s=4)
     plt.show()
+
 
 if __name__ == "__main__":
     main()

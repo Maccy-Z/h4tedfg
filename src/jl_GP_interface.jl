@@ -52,19 +52,16 @@ function train_GP(m::AbstractGPModel; n_iter::Int)
     return (vars, inv_lens)
 end
 
-function pred_proba(m, X; full_cov, model_cov, nSamples::Int=100)
+function pred_proba(m::VGP, X::Matrix{Float64}; full_cov::Bool, model_cov::Bool, nSamples::Int=100)
+
     # X must be a vector of vectors, not matrix
-    X = [row for row in eachrow(X)]
+    # X = [row for row in eachrow(X)]
 
     probs, fs = proba_y(m, X, diag=!full_cov, model_cov=model_cov, nSamples=nSamples)
     return (probs, fs)
 end
 
-function pred_proba_sampler(m, X; full_cov, model_cov, nSamples=100, sampler=nothing)
-
-
-    # X must be a vector of vectors, not matrix
-    X = [row for row in eachrow(X)]
+function pred_proba_sampler(m::VGP, X::Matrix{Float64}; full_cov::Bool, model_cov::Bool, nSamples=100, sampler::FastGP)
 
     probs, fs = proba_y(m, X, diag=!full_cov, model_cov=model_cov, nSamples=nSamples, sampler=sampler)
     return (probs, fs)
