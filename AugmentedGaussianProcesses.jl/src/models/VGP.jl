@@ -33,7 +33,7 @@ mutable struct VGP{
     trained::Bool
     length_bounds::Tuple{Real,Real}
     var_bounds::Tuple{Real,Real}
-    final_Ks
+    final_Ks::Union{Nothing,Tuple{Vararg{LinearAlgebra.Cholesky{Float64, Matrix{Float64}}}}}
 end
 
 function VGP(

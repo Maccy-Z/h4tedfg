@@ -74,13 +74,7 @@ function _predict_f(
     # Convert X_test to a vector of vectors
     X_test = [row for row in eachrow(X_test)]
 
-    Ks = if isnothing(m.final_Ks)
-        compute_K.(m.f, Zviews(m), T(jitt))
-    else
-        getproperty.(m.final_Ks.kernel_matrices, :K)
-    end
-
-
+    Ks = m.final_Ks
     k_star = kernelmatrix.(kernels(m), (X_test,), Zviews(m))
     μf = k_star .* (Ks .\ means(m))
     if !cov

@@ -1,6 +1,5 @@
-from julia.api import Julia
-
-jl = Julia(runtime='/home/maccyz/julia-1.9.3/bin/julia')
+# from julia.api import Julia
+# jl = Julia(runtime='/home/maccyz/julia-1.9.3/bin/julia')
 from julia import Main
 
 Main.include("./jl_GP_interface.jl")

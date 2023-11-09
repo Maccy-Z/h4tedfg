@@ -153,8 +153,8 @@ end
 function compute_proba_full(
     l::MultiClassLikelihood,
     μ::Tuple{Vararg{<:Vector{T}}},
-    σ²::Union{Tuple{
-                Vararg{<:LinearAlgebra.Symmetric{T}}},  # For full covariance matrix
+    σ²::Union{  Tuple{
+                    Vararg{<:LinearAlgebra.Symmetric{T}}},  # For full covariance matrix
                 Tuple{Vararg{<:Vector{T}}}},            # For diagonal covariance matrix
     nSamples::Integer;
     sampler::FastGP
@@ -163,9 +163,7 @@ function compute_proba_full(
     n = length(μ[1]) # Number of test points
     pred = zeros(T, n, K) # Empty container for the predictions
 
-
     gaussians = sample_multivariate_normals(sampler, μ, σ², n_repeats=nSamples) # Shape (K, n, nSamples)
-
     gaussians = cat(gaussians..., dims=3)     # Shape (n, nSamples, K)
     gaussians = reshape(gaussians, :, K)      # Shape (n * nSamples, K)
 

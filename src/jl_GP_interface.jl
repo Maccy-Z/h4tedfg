@@ -36,7 +36,7 @@ function make_GP(X::Matrix{Float64}, y::Vector{Float64}; n_class::Int, init_sigm
     return m
 end
 
-function train_GP(m::AbstractGPModel; n_iter::Int)
+function train_GP(m::VGP; n_iter::Int)
     train!(m, n_iter)
 
     # Print out kernel parameters

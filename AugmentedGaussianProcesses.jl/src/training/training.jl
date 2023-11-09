@@ -99,10 +99,10 @@ function train!(
         @info "Training ended after $(local_iter - 1) iterations. Total number of iterations $(n_iter(model))"
     end
     final_Ks = compute_Ks(model)
-    state = merge(state, final_Ks) # Compute final version of the matrices for predictions
+    # state = merge(state, final_Ks) # Compute final version of the matrices for predictions
     model.final_Ks = final_Ks
 
-    post_step!(model, state)
+    # post_step!(model, state)
     set_trained!(model, true)
     return model, state
 end
@@ -202,12 +202,14 @@ end
 # end
 
 function compute_Ks(m::AbstractGPModel{T}) where {T}
-    return (; kernel_matrices=broadcast(m.f, Zviews(m)) do gp, x
+    return broadcast(m.f, Zviews(m)) do gp, x
         K = compute_K(gp, x, T(jitt))
-        return (; K)
-    end)
+        return K
+    end
 end
 
-function compute_Ks(m::GP{T}) where {T}
-    return (; kernel_matrices=(; K=compute_K(m.f, input(m.data), T(jitt))))
-end
+# function compute_Ks(m::GP{T}) where {T}
+#         @info "AT GP"
+#
+#     return (; kernel_matrices=(; K=compute_K(m.f, input(m.data), T(jitt))))
+# end

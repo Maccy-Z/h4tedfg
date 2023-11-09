@@ -1,9 +1,3 @@
-# from julia.api import Julia
-#
-# jl = Julia(runtime='/home/maccyz/julia-1.9.3/bin/julia')
-# from julia import Main
-#
-# Main.include("./jl_GP_interface.jl")
 from GP_interface2 import JuliaGP
 
 import numpy as np
@@ -47,20 +41,22 @@ def test_data(n_points):
 
 
 def main():
-    n_points = 100
+    n_points = 50
     X, y = gen_data()
     X_test = test_data(n_points)
-    n_samples = 400
+    n_samples = 200
     full_cov = True
     julia_gp = JuliaGP()
 
     julia_gp.make_sampler(len(X_test) * n_samples)
+    print("sampler made")
 
     # Make the Gaussian process
     julia_gp.make_GP(X, y, n_class=3, init_sigma=1., init_scale=1., optimiser="ADAM")
+    print("GP made")
 
     # Train the GP
-    vars, inv_lens = julia_gp.train_GP(n_iter=1000)
+    vars, inv_lens = julia_gp.train_GP(n_iter=100)
     print("Trained")
 
     # Print kernel params
@@ -70,6 +66,7 @@ def main():
     # Predict the labels for the test data
     (probs, p_std), (f_mu, f_var) = julia_gp.pred_proba_sampler(X_test, full_cov=full_cov, model_cov=True, nSamples=n_samples)
 
+    """Plotting"""
     f_mu, f_std = np.array(f_mu), np.sqrt(np.abs(np.array(f_var)))
     probs, p_std = np.array(probs), np.array(p_std)
     f_mu, f_std = f_mu[1], f_std[1]

@@ -113,6 +113,6 @@ include("training/training.jl")
 include("training/sampling.jl")
 # include("training/onlinetraining.jl")
 include("hyperparameter/autotuning.jl")
-include("ar_predict.jl")
+# include("ar_predict.jl")
 
 end #End Module
